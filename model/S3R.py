@@ -158,16 +158,16 @@ class NET(nn.Module):
         )
 
     def forward(self, x):
-        y = x.squeeze(1)
-        z = y.permute(0, 2, 1)
+        y = x.squeeze(1) # ([16, 512, 512])
+        z = y.permute(0, 2, 1) # ([16, 512, 512])
 
         encoder1 = self.encoder_d1(x)# [32, 1, 512, 512]
         encoder2 = self.encoder_d3(x)
         encoder3 = self.encoder_d5(x)
-        encoder_output = torch.cat([encoder1, encoder2, encoder3], dim=1)
-        x = F.adaptive_avg_pool2d(encoder_output, (1, 1))
-        x = x.view(x.size(0), -1)
-        x = self.encoder_to_semantic(x)
+        encoder_output = torch.cat([encoder1, encoder2, encoder3], dim=1) # ([16, 384, 8, 8])
+        x = F.adaptive_avg_pool2d(encoder_output, (1, 1)) # ([16, 384, 1, 1])
+        x = x.view(x.size(0), -1) # ([16, 384])
+        x = self.encoder_to_semantic(x) # ([16, 128])
         expand_x = F.adaptive_avg_pool2d(encoder_output, (1, 1))
         expand_x = expand_x.view(expand_x.shape[0], -1)
         y = self.encoding_to_sa1(y)                 # [B, T, 64]
@@ -188,7 +188,7 @@ class NET(nn.Module):
         return predict
 
 if True:
-    device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     model = NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=10, device=device).to(device)
 
     x = torch.randn(16, 1, 512, 512).to(device)  # batch_size=16
@@ -197,7 +197,7 @@ if True:
 
     from torchsummary import summary
     from thop import profile
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
     # summary(model, input_size=(1, 512))
