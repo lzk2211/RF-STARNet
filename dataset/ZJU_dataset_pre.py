@@ -202,7 +202,7 @@ def data_set_split(nw, args):
     test_labels_paths = torch.tensor(test_labels_paths)
     test_labels_paths = F.one_hot(test_labels_paths, num_classes=num_classes).float()
 
-    resize = 128
+    resize = 512
     # 创建数据变换
     data_transform = {
         "train": transforms.Compose([

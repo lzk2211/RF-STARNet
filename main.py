@@ -13,6 +13,7 @@ import json
 # from dataset_vector import data_set_split
 # from dataset import data_set_split
 from dataset.ZJU_dataset_pre import data_set_split
+from dataset.ZJU_DroneRFb import DroneRFb_data_set_split
 
 ## Delay heavy visualization imports to TSNE block to avoid ABI issues at startup
 
@@ -25,18 +26,19 @@ def main():
     parser = argparse.ArgumentParser(description="Train a localization model")
     parser.add_argument('--epochs', type=int, default=250, help='Number of training epochs')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
-    parser.add_argument('--batch_size', type=int, default=128, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     # parser.add_argument('--runs', type=str, default='runs_Resnet10_model', help='Loss runing graph')
     parser.add_argument('--Train', type=bool, default=True, help='Switch wheater to train')
     parser.add_argument('--resume', type=bool, default=False, help='train from checkpoint')
     parser.add_argument('--Test', type=bool, default=True, help='Test the test_loader use trained model')
     parser.add_argument('--TSNE', type=bool, default=False, help='The t-SNE Visualisation')
 
-    parser.add_argument('--class_num', type=int, default=10, help='class number')
-    parser.add_argument('--model', type=str, default='RFProjectedAttentionClassifier', help='switch model')
+    parser.add_argument('--class_num', type=int, default=25, help='class number')
+    parser.add_argument('--model', type=str, default='RFFormer_Gemini2', help='switch model')
     # parser.add_argument('--image_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6/', help='dataset path')
     parser.add_argument('--image_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6_-5dB/', help='dataset path')
-    parser.add_argument('--exp_name', type=str, default='-5dB_RFProjectedAttentionClassifier_F_classification', help='the name of the experiment')
+    # parser.add_argument('--image_path', type=str, default='/home/lab125/kk/S3R/Data/', help='dataset path')
+    parser.add_argument('--exp_name', type=str, default='-5dB_RFFormer_Gemini2', help='the name of the experiment')
     parser.add_argument('--Dim', type=str, default=None, help='Dimensionality of the input data, 2 for 2D images, 1 for 1D signals')
 
     parser.add_argument('--config', type=str, default=None, help='配置文件路径，用于加载预设配置')
@@ -69,14 +71,19 @@ def main():
 
     device, nw, table_data = folder_settings(args, folder_path)
 
-    train_loader, validate_loader, test_loader, target_classes = data_set_split(nw, args)
-    print(target_classes)
+
 
     # Update the model to fit your input size and number of classes
     model = switch_model(args.model, device, args.class_num)
     model = nn.DataParallel(model)# two GPUs
-    model.to(device) 
+    model.to(device)
 
+    if 'data_set' in args.image_path:
+        train_loader, validate_loader, test_loader, target_classes = data_set_split(nw, args)
+    elif 'S3R' in args.image_path:
+        train_loader, validate_loader, test_loader, target_classes = DroneRFb_data_set_split(nw, args)
+    print(target_classes)
+    
     if args.Train:
         train(args, folder_path, model, device, train_loader, validate_loader)
 

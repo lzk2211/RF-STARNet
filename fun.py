@@ -18,6 +18,10 @@ from model.Complex_UNet import complex_unet
 from model.TimeSeq_SA import TimeSeqSA
 from model.LightAttentionNet import LightAttentionNet
 from model.RFProjectedAttentionClassifier import RFProjectedAttentionClassifier
+from model.RFFormer import RFFormer
+from model.RFFormer_Gemini import RFFormer as RFFormer_Gemini
+from model.RFFormer_Gemini2 import RFformer_v2 as RFFormer_Gemini2
+from model.S3R import NET
 
 from tabulate import tabulate
 
@@ -66,33 +70,20 @@ def switch_model(model, device, num_classes):
         model = resnet34_vector_group(num_classes=num_classes)
     elif model == '1d_lw_resnet10_256':
         model = resnet10_vector_group(num_classes=num_classes)
-    elif model == 'MLP5':
-        model = MLP5(1024, 128, num_classes)
-    elif model == 'MLP3':
-        model = MLP3(1024, 128, num_classes)
-    elif model == 'MLP_2':
-        model = MLP_2()
-    elif model == 'MLP_3':
-        model = MLP_3()
-    elif model == 'MLP_4' or model == 'MLP_4_256':
-        model = MLP_4()
     elif model == 'Res_Inc_Net':
         model = Res_Inc_Net(num_classes=num_classes)
-    elif model == 'MIML_DCNN':
-        model = MIML_DCNN(num_classes=num_classes)
-    elif model == 'complex_resnet34':
-        model = complex_resnet34(num_classes=num_classes)
-    elif model == 'complex_resnet18':
-        model = complex_resnet18(num_classes=num_classes)
-    elif model == 'complex_resnet18_1D':
-        model = complex_resnet18_1D(num_classes=num_classes)
-    elif model == 'complex_Unet':
-        model = complex_unet(n_channels=1, n_classes=num_classes, include_top=False)
     elif model == 'TimeSeqSA':
         model = TimeSeqSA(num_classes=num_classes)
     elif model == 'LightAttentionNet':
         model = LightAttentionNet(num_classes=num_classes, device=device, include_top=True)
     elif model == 'RFProjectedAttentionClassifier':
         model = RFProjectedAttentionClassifier(freq_bins=128, seq_len=128, dropout=0, num_classes=num_classes, groups=8, att_dim=32, k_len=64, device=device)
-
+    elif model == 'RFFormer':
+        model = RFFormer(in_ch=1, num_classes=num_classes, embed_dim=160, depth=4, num_heads=5, patch_size=(4, 4))
+    elif model == 'RFFormer_Gemini':
+        model = RFFormer_Gemini(num_classes=num_classes, seq_len=128, embed_dim=128, num_layers=4, num_heads=4)
+    elif model == 'RFFormer_Gemini2':
+        model = RFFormer_Gemini2(num_classes=num_classes, patch_size_f=64, patch_size_t=8, embed_dim=128, num_layers=4, num_heads=4)
+    elif model == 'S3R':
+        model = NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
     return model

@@ -125,17 +125,17 @@ class GroupedProjectedAttentionRF(nn.Module):
         # x = x.permute(0, 2, 1)  # (B, T, F)
         assert F == self.freq_bins, f"Input freq dim {F} must equal freq_bins {self.freq_bins}"
 
-        # if self.use_pos:
-        #     if T == self.seq_len:
-        #         pos = self.time_pos  # (1, seq_len, 1)
-        #     else:
-        #         # resample time_pos to new T
-        #         pos = F.interpolate(self.time_pos.permute(0,2,1), size=T, mode='linear', align_corners=False)  # (1,1,T)
-        #         pos = pos.permute(0,2,1)  # (1, T, 1)
-        #     # x shape (B, F, T) -> transpose to (B, T, F) then add pos (broadcast on F)
-        #     x_t = x.permute(0, 2, 1) + pos  # (B, T, F)
-        # else:
-        #     x_t = x.permute(0, 2, 1)  # (B, T, F)
+        if self.use_pos:
+            if T == self.seq_len:
+                pos = self.time_pos  # (1, seq_len, 1)
+            else:
+                # resample time_pos to new T
+                pos = F.interpolate(self.time_pos.permute(0,2,1), size=T, mode='linear', align_corners=False)  # (1,1,T)
+                pos = pos.permute(0,2,1)  # (1, T, 1)
+            # x shape (B, F, T) -> transpose to (B, T, F) then add pos (broadcast on F)
+            x_t = x.permute(0, 2, 1) + pos  # (B, T, F)
+        else:
+            x_t = x.permute(0, 2, 1)  # (B, T, F)
 
         # x_t = self.pos_encoding(x.permute(0, 2, 1))  # (B, T, F)
 
