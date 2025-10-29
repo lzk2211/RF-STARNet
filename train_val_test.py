@@ -156,7 +156,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         # print('[epoch %d] train_loss: %.3f val_acc: %.3f' % 
         #         (epoch + 1, train_loss, val_accurate) )
         
-        summary = f"Epoch {epoch+1:3d}/{args.epochs} | Train: {train_loss:.4f} | Train Acc: {train_accuracy:.4f} | Val Acc: {val_accurate:.4f} | LR: {current_lr:.6f}"
+        summary = f"Train Loss: {train_loss:.4f} | Train Acc: {train_accuracy:.4f} | Val Acc: {val_accurate:.4f} | LR: {current_lr:.6f}"
         print(summary)
 
         if val_acc > best_acc:
