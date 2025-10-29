@@ -22,6 +22,11 @@ from model.RFFormer import RFFormer
 from model.RFFormer_Gemini import RFFormer as RFFormer_Gemini
 from model.RFFormer_Gemini2 import RFformer_v2 as RFFormer_Gemini2
 from model.S3R import NET
+from model.S3R_CNN import NET as S3R_CNN_NET
+from model.S3R_SA import NET as S3R_SA_NET
+from model.S3R_z import NET as S3R_z_NET
+from model.ResInc_GAtt import ResInc_GAtt
+from model.ResInc_with_S3R import NET as ResInc_with_S3R_NET
 
 from tabulate import tabulate
 
@@ -36,7 +41,7 @@ def folder_settings(args, folder_path):
     # torch.manual_seed(42)
 
     # if you have GPU, the device will be cuda
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Different dataset have different operation
     # folder_name = os.path.basename(os.path.dirname(args.image_path))  # 提取D00
@@ -72,6 +77,12 @@ def switch_model(model, device, num_classes):
         model = resnet10_vector_group(num_classes=num_classes)
     elif model == 'Res_Inc_Net':
         model = Res_Inc_Net(num_classes=num_classes)
+    elif model == 'Res_Inc_Net_large':
+        model = Res_Inc_Net_large(num_classes=num_classes)
+    elif model == 'Res_Inc_Net_50':
+        model = Res_Inc_Net_50(num_classes=num_classes, include_top=True)
+    elif model == 'Res_Inc_Net_101':
+        model = Res_Inc_Net_101(num_classes=num_classes, include_top=True)
     elif model == 'TimeSeqSA':
         model = TimeSeqSA(num_classes=num_classes)
     elif model == 'LightAttentionNet':
@@ -86,4 +97,14 @@ def switch_model(model, device, num_classes):
         model = RFFormer_Gemini2(num_classes=num_classes, patch_size_f=64, patch_size_t=8, embed_dim=128, num_layers=4, num_heads=4)
     elif model == 'S3R':
         model = NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
+    elif model == 'S3R_CNN':
+        model = S3R_CNN_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
+    elif model == 'S3R_SA':
+        model = S3R_SA_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
+    elif model == 'S3R_z':
+        model = S3R_z_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
+    elif model == 'ResInc_GAtt':
+        model = ResInc_GAtt(num_classes=num_classes)
+    elif model == 'ResInc_with_S3R':
+        model = ResInc_with_S3R_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
     return model
