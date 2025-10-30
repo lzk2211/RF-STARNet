@@ -162,6 +162,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         if val_acc > best_acc:
             best_acc = val_acc
             best_model_state = model.state_dict()
+            print('Saving best model with accuracy: %.3f' % (best_acc / len(validate_loader.dataset)))
 
         writer.add_scalar('Loss/train', train_loss, epoch)
         writer.add_scalar('Acc/train', train_accuracy, epoch)

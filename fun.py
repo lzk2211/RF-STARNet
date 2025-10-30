@@ -83,6 +83,12 @@ def switch_model(model, device, num_classes):
         model = Res_Inc_Net_50(num_classes=num_classes, include_top=True)
     elif model == 'Res_Inc_Net_101':
         model = Res_Inc_Net_101(num_classes=num_classes, include_top=True)
+    elif model == 'Res_Inc_Net_base':
+        model = Res_Inc_Net_base(num_classes=num_classes, include_top=True)
+    elif model == 'Res_Inc_Net_small':
+        model = Res_Inc_Net_small(num_classes=num_classes, include_top=True)
+    elif model == 'Res_Inc_Net_tiny':
+        model = Res_Inc_Net_tiny(num_classes=num_classes, include_top=True)
     elif model == 'TimeSeqSA':
         model = TimeSeqSA(num_classes=num_classes)
     elif model == 'LightAttentionNet':

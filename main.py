@@ -62,17 +62,17 @@ def main():
     parser.add_argument('--Test', type=bool, default=True, help='Test the test_loader use trained model')
     parser.add_argument('--TSNE', type=bool, default=False, help='The t-SNE Visualisation')
 
-    parser.add_argument('--class_num', type=int, default=25, help='class number')
-    parser.add_argument('--model', type=str, default='Res_Inc_Net_large', help='switch model')
-    # parser.add_argument('--image_path', type=str, default='/root/autodl-tmp/data_set_5e6/', help='dataset path')
-    parser.add_argument('--image_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6_-5dB/', help='dataset path')
+    parser.add_argument('--class_num', type=int, default=10, help='class number')
+    parser.add_argument('--model', type=str, default='ResInc_GAtt', help='switch model')
+    parser.add_argument('--image_path', type=str, default='/root/autodl-tmp/data_set_5e6_-5dB/', help='dataset path')
+    # parser.add_argument('--image_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6_-5dB/', help='dataset path')
     # parser.add_argument('--image_path', type=str, default='/home/lab125/kk/S3R/Data/', help='dataset path')
-    parser.add_argument('--exp_name', type=str, default='-5dB_Res_Inc_Net_large_1', help='the name of the experiment')
+    parser.add_argument('--exp_name', type=str, default='-5dB_ResIncbase_GAtt_1', help='the name of the experiment')
     parser.add_argument('--Dim', type=str, default=None, help='Dimensionality of the input data, 2 for 2D images, 1 for 1D signals')
 
     parser.add_argument('--config', type=str, default=None, help='配置文件路径，用于加载预设配置')
     parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
-    parser.add_argument('--device', type=str, default='cuda:1', help='Device to use for training/testing')
+    parser.add_argument('--device', type=str, default='cuda:0', help='Device to use for training/testing')
     # parser.add_argument('--num_samples', type=int, default=10000, help='Number of samples to use for training')
 
     args = parser.parse_args()
