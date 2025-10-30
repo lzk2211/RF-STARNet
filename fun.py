@@ -41,7 +41,7 @@ def folder_settings(args, folder_path):
     # torch.manual_seed(42)
 
     # if you have GPU, the device will be cuda
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Different dataset have different operation
     # folder_name = os.path.basename(os.path.dirname(args.image_path))  # 提取D00

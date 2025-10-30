@@ -104,7 +104,7 @@ class ResNet1D(nn.Module):
                  width_per_group=64,
                  base_channels=64,
                  width_mult: float = 1.0,
-                 stem_channels: int | None = None,
+                 stem_channels: int = None,
                  dropout: float = 0.0):
         super(ResNet1D, self).__init__()
         self.include_top = include_top
@@ -214,11 +214,11 @@ def Res_Inc_Net(
     block,  # <--- 让通用工厂也接受 block
     num_classes: int = 1000,
     include_top: bool = True,
-    layers: tuple[int, int, int, int] | list[int] = (1, 1, 1, 1),
+    layers: tuple[int, int, int, int] = (1, 1, 1, 1),
     groups: int = 32,
     base_channels: int = 64,
     width_mult: float = 1.0,
-    stem_channels: int | None = None,
+    stem_channels: int = None,
     dropout: float = 0.5,
 ):
     return ResNet1D(
@@ -266,14 +266,14 @@ def Res_Inc_Net_101(num_classes: int = 1000, include_top: bool = True):
 
 
 
-# from torchsummary import summary
-# from thop import profile
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+from torchsummary import summary
+from thop import profile
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# model = Res_Inc_Net_101(num_classes=10, include_top=True)
-# model = model.to(device)
+model = Res_Inc_Net_50(num_classes=10, include_top=True)
+model = model.to(device)
 
-# # summary(model, input_size=(1, 512))
-# inputs = torch.randn(1, 1, 512, 512).to(device)
-# flops, params = profile(model, (inputs,))
-# print('flops: ', flops, 'params: ', params)
+# summary(model, input_size=(1, 512))
+inputs = torch.randn(1, 1, 512, 512).to(device)
+flops, params = profile(model, (inputs,))
+print('flops: ', flops, 'params: ', params)
