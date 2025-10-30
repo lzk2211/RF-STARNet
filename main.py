@@ -1,5 +1,6 @@
 import sys
 import os
+import random
 
 import torch
 import torch.nn as nn
@@ -13,13 +14,41 @@ import json
 # from dataset_vector import data_set_split
 # from dataset import data_set_split
 from dataset.ZJU_dataset_pre import data_set_split
-# from dataset.ZJU_DroneRFb import DroneRFb_data_set_split
+try:
+    from dataset.ZJU_DroneRFb import DroneRFb_data_set_split
+except Exception:
+    DroneRFb_data_set_split = None
 
 ## Delay heavy visualization imports to TSNE block to avoid ABI issues at startup
 
 from fun import folder_settings, switch_model
 from train_val_test import *
 # from model.ResNet import ExtendedResNet
+
+def set_seed(seed: int):
+    """Set random seeds for reproducibility before model initialization."""
+    try:
+        os.environ["PYTHONHASHSEED"] = str(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
+        # Make cuDNN and PyTorch ops deterministic where possible
+        try:
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+        except Exception:
+            pass
+        try:
+            # Full determinism (may impact performance; warn_only avoids hard errors on unsupported ops)
+            torch.use_deterministic_algorithms(True, warn_only=True)
+            os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":16:8")
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"[seed] Failed to set full determinism: {e}")
 
 def main():
     # /root/miniconda3/bin/python /root/autodl-tmp/lzk/test/main.py --model_path 'ANN22_model.pth' --Train True --Test True --name ANN22
@@ -38,17 +67,21 @@ def main():
     # parser.add_argument('--image_path', type=str, default='/root/autodl-tmp/data_set_5e6/', help='dataset path')
     parser.add_argument('--image_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6_-5dB/', help='dataset path')
     # parser.add_argument('--image_path', type=str, default='/home/lab125/kk/S3R/Data/', help='dataset path')
-    parser.add_argument('--exp_name', type=str, default='-5dB_Res_Inc_Net_large', help='the name of the experiment')
+    parser.add_argument('--exp_name', type=str, default='-5dB_Res_Inc_Net_large_1', help='the name of the experiment')
     parser.add_argument('--Dim', type=str, default=None, help='Dimensionality of the input data, 2 for 2D images, 1 for 1D signals')
 
     parser.add_argument('--config', type=str, default=None, help='配置文件路径，用于加载预设配置')
     parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
+    parser.add_argument('--device', type=str, default='cuda:1', help='Device to use for training/testing')
     # parser.add_argument('--num_samples', type=int, default=10000, help='Number of samples to use for training')
 
     args = parser.parse_args()
     print(args)
 
-    folder_path = './results/' + args.exp_name
+    # Set seeds BEFORE creating model/dataloaders so that parameter init is reproducible
+    set_seed(int(getattr(args, 'seed', 42)))
+
+    folder_path = './1030/' + args.exp_name
     if not os.path.exists(folder_path):# if the folder does not exist, than create it
         os.makedirs(folder_path)
 
@@ -76,12 +109,13 @@ def main():
 
     # Update the model to fit your input size and number of classes
     model = switch_model(args.model, device, args.class_num)
-    model = nn.DataParallel(model)# two GPUs
-    model.to(device)
+    
 
     if 'data_set' in args.image_path:
         train_loader, validate_loader, test_loader, target_classes = data_set_split(nw, args)
     elif 'S3R' in args.image_path:
+        if DroneRFb_data_set_split is None:
+            raise ImportError("DroneRFb_data_set_split not available; ensure dataset/ZJU_DroneRFb.py is importable.")
         train_loader, validate_loader, test_loader, target_classes = DroneRFb_data_set_split(nw, args)
     print(target_classes)
     

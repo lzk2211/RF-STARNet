@@ -41,7 +41,7 @@ def folder_settings(args, folder_path):
     # torch.manual_seed(42)
 
     # if you have GPU, the device will be cuda
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
 
     # Different dataset have different operation
     # folder_name = os.path.basename(os.path.dirname(args.image_path))  # 提取D00
@@ -107,4 +107,8 @@ def switch_model(model, device, num_classes):
         model = ResInc_GAtt(num_classes=num_classes)
     elif model == 'ResInc_with_S3R':
         model = ResInc_with_S3R_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
+
+    if device == 'cuda' and torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model)# two GPUs
+    model.to(device)
     return model
