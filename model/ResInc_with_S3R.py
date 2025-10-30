@@ -67,12 +67,19 @@ class ResNet1D(nn.Module):
                  num_classes=1000,
                  include_top=True,
                  groups=1,
-                 width_per_group=64):
+                 width_per_group=64,
+                 base_channels=64,
+                 width_mult: float = 1.0,
+                 stem_channels: int = None,
+                 dropout: float = 0.0):
         super(ResNet1D, self).__init__()
         self.include_top = include_top
-        self.in_channel = 64
+        self.in_channel = stem_channels if stem_channels is not None else base_channels
         self.groups = groups
         self.width_per_group = width_per_group
+        self.base_channels = base_channels
+        self.width_mult = float(width_mult)
+        self.dropout_p = float(dropout)
 
         # 修改输入通道数为1
         self.conv1 = nn.Conv1d(1, self.in_channel, kernel_size=7, stride=2,
@@ -80,14 +87,34 @@ class ResNet1D(nn.Module):
         self.bn1 = nn.BatchNorm1d(self.in_channel)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, blocks_num[0])
-        self.layer2 = self._make_layer(block, 128, blocks_num[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, blocks_num[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, blocks_num[3], stride=2)
-        self.dropout = nn.Dropout(p=0.5)
+
+        def _make_divisible(v: int, divisor: int) -> int:
+            if divisor <= 1:
+                return int(v)
+            v = int(v)
+            return max(divisor, (v + divisor - 1) // divisor * divisor)
+
+        stage_base = [1, 2, 4, 8]
+        stage_channels = [
+            _make_divisible(int(self.base_channels * b * self.width_mult), self.groups)
+            for b in stage_base
+        ]
+        
+        # 对于 Bottleneck，stage_channels[0] (例如64) 是 *瓶颈* 通道数
+        # BasicBlock 会将其视为 *输出* 通道数
+        # _make_layer 中的逻辑会正确处理
+        
+        self.layer1 = self._make_layer(block, stage_channels[0], blocks_num[0])
+        self.layer2 = self._make_layer(block, stage_channels[1], blocks_num[1], stride=2)
+        self.layer3 = self._make_layer(block, stage_channels[2], blocks_num[2], stride=2)
+        self.layer4 = self._make_layer(block, stage_channels[3], blocks_num[3], stride=2)
+
+        self.dropout = nn.Dropout(p=self.dropout_p) if self.dropout_p and include_top else nn.Identity()
         if self.include_top:
-            self.avgpool = nn.AdaptiveAvgPool1d(1)  # output size = 1
-            self.fc = nn.Linear(512 * block.expansion, num_classes)
+            self.avgpool = nn.AdaptiveAvgPool1d(1)
+            # 最终通道数是最后一个 stage 的通道数 * 块的 expansion
+            final_channels = stage_channels[3] * block.expansion
+            self.fc = nn.Linear(final_channels, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
@@ -97,6 +124,8 @@ class ResNet1D(nn.Module):
 
     def _make_layer(self, block, channel, block_num, stride=1):
         downsample = None
+        # 'channel' 是传入的 stage_channel，例如 64, 128, 256, 512
+        # block.expansion 对 BasicBlock 是 1, 对 Bottleneck 是 4
         if stride != 1 or self.in_channel != channel * block.expansion:
             downsample = nn.Sequential(
                 nn.Conv1d(self.in_channel, channel * block.expansion, kernel_size=1,
@@ -105,11 +134,13 @@ class ResNet1D(nn.Module):
 
         layers = []
         layers.append(block(self.in_channel,
-                            channel,
+                            channel,  # 'channel' 传递给 block 的 out_channel
                             downsample=downsample,
                             stride=stride,
                             groups=self.groups,
                             width_per_group=self.width_per_group))
+        
+        # 更新 self.in_channel 供下一块使用
         self.in_channel = channel * block.expansion
 
         for _ in range(1, block_num):
@@ -120,7 +151,8 @@ class ResNet1D(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x):        
+        # 假设 x 的输入形状是 (B, 1, L)，例如 (1, 1, 512)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -134,13 +166,56 @@ class ResNet1D(nn.Module):
         if self.include_top:
             x = self.avgpool(x)
             x = torch.flatten(x, 1)
+            x = self.dropout(x)
             x = self.fc(x)
 
         return x
 
-def Res_Inc_Net(num_classes=1000, include_top=True):
-    # 这是 Res_Inc_Net.py 中定义的特定工厂函数
-    return ResNet1D(BasicBlock1D, [1, 1, 1, 1], num_classes=num_classes, include_top=include_top, groups=32, width_per_group=4)
+
+
+def Res_Inc_Net(
+    block,  # <--- 让通用工厂也接受 block
+    num_classes: int = 1000,
+    include_top: bool = True,
+    layers: tuple[int, int, int, int] = (1, 1, 1, 1),
+    groups: int = 32,
+    base_channels: int = 64,
+    width_mult: float = 1.0,
+    stem_channels: int = None,
+    dropout: float = 0.5,
+):
+    return ResNet1D(
+        block,  # <-- 传入 block
+        list(layers),
+        num_classes=num_classes,
+        include_top=include_top,
+        groups=groups,
+        width_per_group=4, # 这个参数在你的 BasicBlock 中未用，但在 Bottleneck 中有用
+        base_channels=base_channels,
+        width_mult=width_mult,
+        stem_channels=stem_channels,
+        dropout=dropout,
+    )
+
+# --- 你的原始工厂 ---
+def Res_Inc_Net_tiny(num_classes: int = 1000, include_top: bool = True):
+    return Res_Inc_Net(BasicBlock1D, num_classes=num_classes, include_top=include_top,
+        layers=(1, 1, 1, 1), base_channels=32, dropout=0.3)
+
+def Res_Inc_Net_small(num_classes: int = 1000, include_top: bool = True):
+    return Res_Inc_Net(BasicBlock1D, num_classes=num_classes, include_top=include_top,
+        layers=(1, 1, 1, 1), base_channels=64, dropout=0.5)
+
+def Res_Inc_Net_base(num_classes: int = 1000, include_top: bool = True):
+    """ResNet-18 结构 (BasicBlock, [2,2,2,2])"""
+    return Res_Inc_Net(BasicBlock1D, num_classes=num_classes, include_top=include_top,
+        layers=(2, 2, 2, 2), base_channels=64, dropout=0.5)
+
+def Res_Inc_Net_large(num_classes: int = 1000, include_top: bool = True):
+    """ResNet-34 结构 (BasicBlock, [3,4,6,3])"""
+    return Res_Inc_Net(BasicBlock1D, num_classes=num_classes, include_top=include_top,
+        layers=(3, 4, 6, 3), base_channels=64, dropout=0.5)
+
 
 
 # ======================================================
@@ -210,7 +285,7 @@ class NET(nn.Module):
         
         # --- 新的: ResInc (x) 分支 ---
         # 我们希望它输出 [B, semantic_dim] 来匹配其他分支
-        self.res_inc_extractor = Res_Inc_Net(num_classes=self.semantic_dim, include_top=True)
+        self.res_inc_extractor = Res_Inc_Net_base(num_classes=self.semantic_dim, include_top=True)
 
 
         # --- 最终组合层 (保留) ---
