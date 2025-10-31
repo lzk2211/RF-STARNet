@@ -316,11 +316,11 @@ class RFProjectedAttentionClassifier(nn.Module):
 
 
 
-if False:
+if True:
     device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
-    model = RFProjectedAttentionClassifier(freq_bins=128, seq_len=128, num_classes=25, groups=8, att_dim=32, k_len=64).to(device)
+    model = RFProjectedAttentionClassifier(freq_bins=512, seq_len=128, num_classes=25, groups=8, att_dim=32, k_len=64).to(device)
 
-    x = torch.randn(16, 1, 128, 128).to(device)  # batch_size=16
+    x = torch.randn(16, 1, 512, 512).to(device)  # batch_size=16
     out = model(x)
     print(out.shape)
 
@@ -328,10 +328,10 @@ if False:
     from thop import profile
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    model = RFProjectedAttentionClassifier(freq_bins=128, seq_len=128, num_classes=25, groups=8, att_dim=32, k_len=64)
+    model = RFProjectedAttentionClassifier(freq_bins=512, seq_len=128, num_classes=25, groups=8, att_dim=32, k_len=64)
     model = model.to(device)
 
     # summary(model, input_size=(1, 512))
-    inputs = torch.randn(1, 1, 128, 128).to(device)
+    inputs = torch.randn(1, 1, 512, 512).to(device)
     flops, params = profile(model, (inputs,))
     print('flops: ', flops, 'params: ', params)

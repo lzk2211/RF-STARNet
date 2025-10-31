@@ -410,6 +410,13 @@ class RelativePositionBias(nn.Module):
         return self.relative_bias[:, idx]
 
 class GroupedProjectedAttentionRF(nn.Module):
+    """
+    改写的 GroupedProjectedAttention，专为输入 (B, F, T) 设计。
+    内部视作 (B, T, D) with D=F（frequency bins as feature dim）并在 time 维度做压缩 k_len。
+    支持当输入 T != seq_len 时对 Pk/Pv 做线性插值重采样。
+    返回与输入相同的形状 (B, F, T)（即把通道放回 frequency-first 形式）。
+    """
+
     def __init__(self,
                  freq_bins: int,
                  att_dim: int,
@@ -419,6 +426,13 @@ class GroupedProjectedAttentionRF(nn.Module):
                  use_pos: bool = True,
                  dropout: float = 0.0,
                  device: str = 'cuda'):
+        """
+        freq_bins: F (feature dim)
+        att_dim: query/key dim per group (d_a)
+        groups: number of groups (must divide freq_bins)
+        seq_len: reference time length used to create Pk/Pv
+        k_len: compressed key/value length
+        """
         super().__init__()
         assert freq_bins % groups == 0, "freq_bins must be divisible by groups"
         self.freq_bins = freq_bins
@@ -429,69 +443,130 @@ class GroupedProjectedAttentionRF(nn.Module):
         self.k_len = k_len
         self.scale = 1.0 / math.sqrt(att_dim)
         self.use_pos = use_pos
-        
+        self.device = device
+
+        # self.pos_encoding = PositionalEncoding(freq_bins, dropout)
+
+        # per-group linear projections
         self.qs = nn.ModuleList([nn.Linear(self.gdim, att_dim, bias=False) for _ in range(groups)])
         self.ks = nn.ModuleList([nn.Linear(self.gdim, att_dim, bias=False) for _ in range(groups)])
         self.vs = nn.ModuleList([nn.Linear(self.gdim, self.gdim, bias=False) for _ in range(groups)])
         self.os = nn.ModuleList([nn.Linear(self.gdim, self.gdim, bias=False) for _ in range(groups)])
 
-        self.Pk = nn.ParameterList([nn.Parameter(torch.randn(seq_len, k_len) * (1.0 / math.sqrt(seq_len))) for _ in range(groups)])
-        self.Pv = nn.ParameterList([nn.Parameter(torch.randn(seq_len, k_len) * (1.0 / math.sqrt(seq_len))) for _ in range(groups)])
+        # Pk, Pv: (seq_len, k_len) per group
+        self.Pk = nn.ParameterList([nn.Parameter(torch.randn(seq_len, k_len) * (1.0 / math.sqrt(seq_len)))
+                                    for _ in range(groups)])
+        self.Pv = nn.ParameterList([nn.Parameter(torch.randn(seq_len, k_len) * (1.0 / math.sqrt(seq_len)))
+                                    for _ in range(groups)])
+
+        # 使用正弦-余弦位置编码（不再使用可学习 time_pos）
+        # 保留 self.use_pos 开关，按需在 forward 中调用 position_coding(x)
+        if use_pos:
+            # (1, seq_len, 1) broadcastable for (B, T, D)
+            self.time_pos = nn.Parameter(torch.zeros(1, seq_len, 1))
+        else:
+            self.register_parameter('time_pos', None)
 
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
         self.layer_norm = nn.LayerNorm(freq_bins)
-        self.rel_pos_bias = RelativePositionBias(seq_len=seq_len, num_heads=1)
+        self.encoding_to_sa = nn.Sequential(nn.Linear(128, 128), nn.ReLU())
 
+        self.rel_pos_bias = RelativePositionBias(seq_len=seq_len, num_heads=1)
     def _resample_P(self, P: torch.Tensor, target_T: int) -> torch.Tensor:
+        """
+        P: (seq_len, k_len)
+        return: (target_T, k_len) by linear interpolation along seq_len dim if needed.
+        """
         if target_T == self.seq_len:
             return P
-        Pt = P.t().unsqueeze(0)
-        Pt_resized = F.interpolate(Pt, size=target_T, mode='linear', align_corners=False)
-        return Pt_resized.squeeze(0).t()
+        # P.T shape -> (k_len, seq_len) -> make batch (1, k_len, seq_len) and interpolate along last dim
+        Pt = P.t().unsqueeze(0)  # (1, k_len, seq_len)
+        # F.interpolate supports 3D input for linear mode: (N, C, L)
+        Pt_resized = F.interpolate(Pt, size=target_T, mode='linear', align_corners=False)  # (1, k_len, target_T)
+        Pt_resized = Pt_resized.squeeze(0)  # (k_len, target_T)
+        return Pt_resized.t()  # -> (target_T, k_len)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Expects x: (B, 1, F, T)
+        """
+        x: (B, F, T)
+        returns: out (B, F, T)
+        """
+
         B, C, F, T = x.shape
-        x = x.squeeze(1)  # -> (B, F, T)
+        x = x.squeeze(1)  # (B, F, T)
+        # x = x.permute(0, 2, 1)  # (B, T, F)
         assert F == self.freq_bins, f"Input freq dim {F} must equal freq_bins {self.freq_bins}"
 
-        # x_t = x.permute(0, 2, 1)  # -> (B, T, F)
-        x_t = x
-        x_t = self.layer_norm(x_t)
+        # if self.use_pos:
+        #     if T == self.seq_len:
+        #         pos = self.time_pos  # (1, seq_len, 1)
+        #     else:
+        #         # resample time_pos to new T
+        #         pos = F.interpolate(self.time_pos.permute(0,2,1), size=T, mode='linear', align_corners=False)  # (1,1,T)
+        #         pos = pos.permute(0,2,1)  # (1, T, 1)
+        #     # x shape (B, F, T) -> transpose to (B, T, F) then add pos (broadcast on F)
+        #     x_t = x.permute(0, 2, 1) + pos  # (B, T, F)
+        # else:
+        #     x_t = x.permute(0, 2, 1)  # (B, T, F)
 
-        B, T2, D = x_t.shape
+        # x_t = self.pos_encoding(x.permute(0, 2, 1))  # (B, T, F)
+
+        # 位置编码：使用给定的正弦-余弦编码函数，直接按当前 T/F 生成，无需插值
+        # x_t = self.encoding_to_sa(x)
+        # if self.use_pos:
+        #     pos = position_coding(x_t).to(self.device)  # (1, T, F)
+        #     x_t = x_t + pos
+
+        x_t = x
+        # 注意：当前张量形状为 (B, F, T)，LayerNorm(freq) 需作用在 F 维。
+        # 由于 LayerNorm 期望最后一维为特征维，所以这里先转置到 (B, T, F)，归一化后再保持该布局用于注意力计算。
+        x_t = x_t.permute(0, 2, 1)  # (B, T, F)
+        x_t = self.layer_norm(x_t)  # normalize over F
+
+        B, T2, D = x_t.shape  # 现在 T2 == 原始 T, D == F
         G = self.groups
         gdim = self.gdim
 
-        xg = x_t.view(B, T2, G, gdim).permute(0, 2, 1, 3)
+        # split into groups along feature dim: shape -> (B, G, T, gdim)
+        xg = x_t.view(B, T2, G, gdim).permute(0, 2, 1, 3)  # (B, G, T, gdim)
 
         outs = []
         for g in range(G):
-            xg_g = xg[:, g]
-            q = self.qs[g](xg_g)
-            k = self.ks[g](xg_g)
-            v = self.vs[g](xg_g)
+            xg_g = xg[:, g]  # (B, T, gdim)
+            q = self.qs[g](xg_g)  # (B, T, att_dim)
+            k = self.ks[g](xg_g)  # (B, T, att_dim)
+            v = self.vs[g](xg_g)  # (B, T, gdim)
 
-            Pk_g = self._resample_P(self.Pk[g], T2)
-            Pv_g = self._resample_P(self.Pv[g], T2)
+            # resample Pk/Pv if T2 != seq_len（与当前序列长度对齐）
+            Pk_g = self._resample_P(self.Pk[g], T2)  # (T2, k_len)
+            Pv_g = self._resample_P(self.Pv[g], T2)  # (T2, k_len)
 
-            k_red = torch.einsum('bta,tk->bka', k, Pk_g)
-            v_red = torch.einsum('btg,tk->bkg', v, Pv_g)
+            # compress along time: einsum -> k_red: (B, k_len, att_dim), v_red: (B, k_len, gdim)
+            k_red = torch.einsum('bta,tk->bka', k, Pk_g)  # (B, k_len, att_dim)
+            v_red = torch.einsum('btg,tk->bkg', v, Pv_g)  # (B, k_len, gdim)
 
+            # attention: (B,T,att_dim) @ (B,att_dim,k_len) -> (B,T,k_len)
             att = torch.matmul(q, k_red.transpose(1, 2)) * self.scale
-            bias = self.rel_pos_bias(T2, self.k_len).to(att.device)
-            att = att + bias
+
+            # 相对位置偏置：生成 (1, T2, k_len)，与 att 形状对齐并按 (B, T2, k_len) 广播
+            bias = self.rel_pos_bias(T2, self.k_len).to(att.device)  # (1, T2, k_len)
+            att = att + bias.squeeze(0)  # (T2, k_len)
+
             att = torch.softmax(att, dim=-1)
             att = self.dropout(att)
 
+            # out: (B, T, gdim)
             out_g = torch.matmul(att, v_red)
-            out_g = self.os[g](out_g)
+            out_g = self.os[g](out_g)  # (B, T, gdim)
             outs.append(out_g)
 
-        out = torch.cat(outs, dim=-1)
-        out = out.permute(0, 2, 1).contiguous()  # -> (B, F, T)
-        return out
+        # concat groups along feature axis -> (B, T, D)
+        out = torch.cat(outs, dim=-1)  # (B, T, F)
 
+        # transpose back to (B, F, T)
+        out = out.permute(0, 2, 1).contiguous()  # (B, F, T)
+        return out
+    
 # ==========================================================================================
 # New Combined Model
 # ==========================================================================================
@@ -513,11 +588,10 @@ class ResInc_GAtt(nn.Module):
         # Input dimensions (F=512, T=512) are set here.
         self.attention_features = GroupedProjectedAttentionRF(
             freq_bins=512,
-            seq_len=512,  # Reference sequence length
+            seq_len=128,  # Reference sequence length
             att_dim=32,   # Attention dimension per group
             groups=8,     # Number of attention groups
             k_len=64,     # Compressed key/value length
-            use_pos=True,
             dropout=0.1,
         )
         
