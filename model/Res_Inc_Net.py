@@ -266,14 +266,14 @@ def Res_Inc_Net_101(num_classes: int = 1000, include_top: bool = True):
 
 
 
-from torchsummary import summary
-from thop import profile
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# from torchsummary import summary
+# from thop import profile
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-model = Res_Inc_Net_50(num_classes=10, include_top=True)
-model = model.to(device)
+# model = Res_Inc_Net_50(num_classes=10, include_top=True)
+# model = model.to(device)
 
-# summary(model, input_size=(1, 512))
-inputs = torch.randn(1, 1, 512, 512).to(device)
-flops, params = profile(model, (inputs,))
-print('flops: ', flops, 'params: ', params)
+# # summary(model, input_size=(1, 512))
+# inputs = torch.randn(1, 1, 512, 512).to(device)
+# flops, params = profile(model, (inputs,))
+# print('flops: ', flops, 'params: ', params)
