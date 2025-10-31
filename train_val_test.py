@@ -57,7 +57,8 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
 
     # 单标签损失与优化器
     loss_function = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-3)
+    # optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-3)
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-3)
 
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5, verbose=True)
@@ -156,13 +157,12 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         # print('[epoch %d] train_loss: %.3f val_acc: %.3f' % 
         #         (epoch + 1, train_loss, val_accurate) )
         
-        summary = f"Train Loss: {train_loss:.4f} | Train Acc: {train_accuracy:.4f} | Val Acc: {val_accurate:.4f} | LR: {current_lr:.6f}"
+        summary = f"Epoch {epoch+1:3d}/{args.epochs} | Train: {train_loss:.4f} | Train Acc: {train_accuracy:.4f} | Val Acc: {val_accurate:.4f} | LR: {current_lr:.6f}"
         print(summary)
 
         if val_acc > best_acc:
             best_acc = val_acc
             best_model_state = model.state_dict()
-            print('Saving best model with accuracy: %.3f' % (best_acc / len(validate_loader.dataset)))
 
         writer.add_scalar('Loss/train', train_loss, epoch)
         writer.add_scalar('Acc/train', train_accuracy, epoch)
