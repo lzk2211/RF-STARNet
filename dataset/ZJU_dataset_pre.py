@@ -237,7 +237,8 @@ def data_set_split(nw, args):
     test_size = int(total_samples * val_ratio)
     val_size = int(total_samples * test_ratio)
     
-    torch.manual_seed(42)# K-fold交叉验证时设置随机种子
+    torch.manual_seed(args.seed)# K-fold交叉验证时设置随机种子
+    random.seed(args.seed)
     indices = list(range(total_samples))
     random.shuffle(indices)
     
