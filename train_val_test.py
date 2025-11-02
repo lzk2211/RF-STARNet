@@ -57,8 +57,8 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
 
     # 单标签损失与优化器
     loss_function = nn.CrossEntropyLoss()
-    # optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-3)
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-3)
+    # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-3)
 
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5, verbose=True)
