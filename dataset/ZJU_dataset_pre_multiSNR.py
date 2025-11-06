@@ -32,6 +32,10 @@ class CustomDataset(Dataset):
         sample_file = self.file_paths[idx]
         sample_labels = self.labels[idx]
 
+        parts = sample_file.split('/')
+        floader = parts[-3]
+        snr = 'pure' if floader == 'data_set_5e6' else floader.rsplit("5e6_", 1)[1]
+
         # 加载单个样本图像（从文件路径读取图片）
         img_pil = Image.open(sample_file).convert('L')  # 转为灰度单通道
 
@@ -61,7 +65,7 @@ class CustomDataset(Dataset):
         #         print(f"[WARN] RPCA failed for {sample_file}: {e}. Fallback to original image.")
 
 
-        return image, sample_labels
+        return image, sample_labels, snr
 
 def data_set_split(nw, args):
 
@@ -74,12 +78,11 @@ def data_set_split(nw, args):
 
     label_map = {}
 
-    root_path = '/media/lab125/SSD11/D00/data_set_5e6'
     data_paths = ['-20', '-15', '-10', '-5', '0', '5']
     # data_paths = ['-20', '-15', '-10', '0', '5']
     data_paths = ['_' + path + 'dB/' for path in data_paths]
     data_paths.append('/')
-    data_abs_paths = [root_path + path for path in data_paths]
+    data_abs_paths = [args.root_path + path for path in data_paths]
 
     # 目标类别列表
     num_classes = 10
@@ -169,10 +172,10 @@ def data_set_split(nw, args):
                 val_dataset_paths.extend([all_file_paths[i] for i in val_indices])
                 val_labels_str.extend([target_class] * len(val_indices))
 
-                if args.test_path in all_file_paths[0]:
+                # if args.test_path in all_file_paths[0]:
                     # 测试集
-                    test_dataset_paths.extend([all_file_paths[i] for i in test_indices])
-                    test_labels_str.extend([target_class] * len(test_indices))
+                test_dataset_paths.extend([all_file_paths[i] for i in test_indices])
+                test_labels_str.extend([target_class] * len(test_indices))
 
     print("...数据划分完成。")
 

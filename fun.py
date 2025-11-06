@@ -29,8 +29,9 @@ from model.S3R_z import NET as S3R_z_NET
 from model.ResInc_GAtt import ResInc_GAtt
 from model.ResInc_with_S3R import NET as ResInc_with_S3R_NET
 from model.ResInc_SpAtt import ResInc_SpAtt
-from model.SpectraAtt_T import rf_projected_attention_medium as T_rf_projected_attention_medium
-from model.SpectraAtt_F import rf_projected_attention_medium as F_rf_projected_attention_medium
+from model.ResInc_SpAtt_noProjected import ResInc_SpAtt as ResInc_SpAtt_noPro
+# from model.SpectraAtt_T import rf_projected_attention_medium as T_rf_projected_attention_medium
+# from model.SpectraAtt_F import rf_projected_attention_medium as F_rf_projected_attention_medium
 
 from model.SpectraAtt import rf_projected_attention_large, rf_projected_attention_medium, rf_projected_attention_small
 from model.SpectraAtt_noProjected import rf_projected_attention_large as No_projected_rf_projected_attention_large
@@ -38,9 +39,9 @@ from model.SpectraAtt_noProjected import rf_projected_attention_medium as No_pro
 
 
 
-from model.ResInc_SpAtt_fusion import ResInc_SpAtt as ResInc_SpAtt_fusion
+# from model.ResInc_SpAtt_fusion import ResInc_SpAtt as ResInc_SpAtt_fusion
 
-from model.MobileNetV3Small_ETF import MobileNetV3Small_ETF
+# from model.MobileNetV3Small_ETF import MobileNetV3Small_ETF
 
 from tabulate import tabulate
 
@@ -58,13 +59,13 @@ def folder_settings(args, folder_path):
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
 
     # Different dataset have different operation
-    # folder_name = os.path.basename(os.path.dirname(args.image_path))  # 提取D00
-    # file_name = os.path.basename(args.image_path).replace("data_set_", "")  # 提取1024_1024
+    # folder_name = os.path.basename(os.path.dirname(args.root_path))  # 提取D00
+    # file_name = os.path.basename(args.root_path).replace("data_set_", "")  # 提取1024_1024
     # name = f"{folder_name}_{file_name}"
 
     nw = min([os.cpu_count(), args.batch_size if args.batch_size > 1 else 0, 8])  # number of workers
 
-    assert os.path.exists(args.image_path), "{} path does not exist.".format(args.image_path)
+    assert os.path.exists(args.root_path), "{} path does not exist.".format(args.root_path)
 
     # 创建表格数据
     table_data = [
@@ -75,7 +76,7 @@ def folder_settings(args, folder_path):
         ["Learning Rate", args.lr],
         ["Model", args.model],
         ["Class Number", args.class_num],
-        ["Image Path", args.image_path]
+        ["Image Path", args.root_path]
     ]
     # 打印表格
     print(tabulate(table_data, headers=["Parameter", "Value"], tablefmt="grid"))
@@ -147,8 +148,8 @@ def switch_model(model, device, num_classes):
         model = ResInc_with_S3R_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
     elif model == 'ResInc_SpAtt':
         model = ResInc_SpAtt(num_classes=num_classes)
-    elif model == 'ResInc_SpAtt_fusion':
-        model = ResInc_SpAtt_fusion(num_classes=num_classes, fusion_mode='bilinear')
+    elif model == 'ResInc_SpAtt_noPro':
+        model = ResInc_SpAtt_noPro(num_classes=num_classes)
 
 
     elif model == 'MobileNetV3Small_ETF':

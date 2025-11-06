@@ -316,7 +316,7 @@ class RFProjectedAttentionClassifier(nn.Module):
 
 
 
-if True:
+if False:
     device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
     model = RFProjectedAttentionClassifier(freq_bins=512, seq_len=128, num_classes=25, groups=8, att_dim=32, k_len=64).to(device)
 

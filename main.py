@@ -23,7 +23,8 @@ except Exception:
 ## Delay heavy visualization imports to TSNE block to avoid ABI issues at startup
 
 from fun import folder_settings, switch_model
-from train_val_test import *
+# from train_val_test import *
+from train_val_test_multiSNR import *
 # from train_val_test_MobileNet_ETF import *
 # from model.ResNet import ExtendedResNet
 
@@ -59,23 +60,23 @@ def main():
     parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     # parser.add_argument('--runs', type=str, default='runs_Resnet10_model', help='Loss runing graph')
-    parser.add_argument('--Train', type=bool, default=True, help='Switch wheater to train')
+    # parser.add_argument('--Train', type=bool, default=True, help='Switch wheater to train')
     parser.add_argument('--resume', type=bool, default=False, help='train from checkpoint')
-    parser.add_argument('--Test', type=bool, default=True, help='Test the test_loader use trained model')
+    # parser.add_argument('--Test', type=bool, default=True, help='Test the test_loader use trained model')
     parser.add_argument('--TSNE', type=bool, default=False, help='The t-SNE Visualisation')
 
-    parser.add_argument('--class_num', type=int, default=10, help='class number')
-    parser.add_argument('--model', type=str, default='No_projected_rf_projected_attention_medium', help='switch model')
-    # parser.add_argument('--image_path', type=str, default='/root/autodl-tmp/data_set_5e6_-5dB/', help='dataset path')
-    parser.add_argument('--image_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6_-5dB/', help='dataset path')
-    parser.add_argument('--test_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6/', help='dataset path')
-    # parser.add_argument('--image_path', type=str, default='/home/lab125/kk/S3R/Data/', help='dataset path')
-    parser.add_argument('--exp_name', type=str, default='rfAtt_m', help='the name of the experiment')
-    parser.add_argument('--Dim', type=str, default=None, help='Dimensionality of the input data, 2 for 2D images, 1 for 1D signals')
+    parser.add_argument('--mode', type=str, default='Test', choices=['Train', 'Test'], help='switch mode')
+    parser.add_argument('--exp_name', type=str, default='Res_Inc_Net_base', help='the name of the experiment')
 
-    parser.add_argument('--config', type=str, default=None, help='配置文件路径，用于加载预设配置')
-    parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
-    parser.add_argument('--device', type=str, default='cuda:1', help='Device to use for training/testing')
+    parser.add_argument('--class_num', type=int, default=10, help='class number')
+    parser.add_argument('--model', type=str, default='ResInc_SpAtt', help='switch model')
+    parser.add_argument('--root_path', type=str, default='/root/autodl-tmp/data_set_5e6', help='dataset path')
+    # parser.add_argument('--root_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6', help='dataset path')
+    # parser.add_argument('--test_path', type=str, default='data_set_5e6_-20dB/', help='dataset path')
+    # parser.add_argument('--image_path', type=str, default='/home/lab125/kk/S3R/Data/', help='dataset path')
+
+    parser.add_argument('--seed', type=int, default=3407, help='Random seed for reproducibility')
+    parser.add_argument('--device', type=str, default='cuda:0', help='Device to use for training/testing')
     # parser.add_argument('--num_samples', type=int, default=10000, help='Number of samples to use for training')
 
     args = parser.parse_args()
@@ -88,49 +89,43 @@ def main():
     if not os.path.exists(folder_path):# if the folder does not exist, than create it
         os.makedirs(folder_path)
 
-    if args.config is None and args.Train:
+    if args.mode == 'Train':
         # 将args转换为字典(如果不是字典)
         if not isinstance(args, dict):
             config_dict = vars(args)
         else:
             config_dict = args
-        # 保存为JSON文件
         config_path = os.path.join(folder_path, "config.json")
         with open(config_path, 'w') as f:
             json.dump(config_dict, f, indent=4)
-    elif args.config and args.Test:
-        with open(args.config, 'r') as f:
+    elif args.mode == 'Test':
+        config_path = os.path.join(folder_path, "config.json") 
+        with open(config_path, 'r') as f:
             loaded_config = json.load(f)
-        # 更新默认参数
+        keys_to_skip_update = ['resume', 'TSNE', 'mode', 'config']
         for key, value in loaded_config.items():
-            if key != 'config':  # 避免覆盖config参数本身
+            if hasattr(args, key) and (key not in keys_to_skip_update):
                 setattr(args, key, value)
 
     device, nw, table_data = folder_settings(args, folder_path)
 
-
-
     # Update the model to fit your input size and number of classes
     model = switch_model(args.model, device, args.class_num)
-    
 
-    if 'data_set' in args.image_path:
+    if 'data_set' in args.root_path:
         train_loader, validate_loader, test_loader, target_classes = data_set_split(nw, args)
-    elif 'S3R' in args.image_path:
+    elif 'S3R' in args.root_path:
         if DroneRFb_data_set_split is None:
             raise ImportError("DroneRFb_data_set_split not available; ensure dataset/ZJU_DroneRFb.py is importable.")
         train_loader, validate_loader, test_loader, target_classes = DroneRFb_data_set_split(nw, args)
     print(target_classes)
     
-    if args.Train:
+    if args.mode == 'Train':
         train(args, folder_path, model, device, train_loader, validate_loader)
 
 
-    if args.Test:
-        # acc, precision, recall, f1, macro_ap, micro_ap = 
+    if args.mode == 'Test':
         test(args, folder_path, model, device, test_loader, target_classes)
-
-        # save_results(folder_path, acc, precision, recall, f1, macro_ap, micro_ap, table_data)
 
 
     if args.TSNE:
