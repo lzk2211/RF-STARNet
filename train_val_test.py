@@ -147,7 +147,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
 
         # 单标签分类，使用softmax输出
         _, predicted = torch.max(all_outputs, dim=1)
-        all_labels = torch.argmax(all_labels, dim=1)
+        # all_labels = torch.argmax(all_labels, dim=1)
         correct = (predicted == all_labels).float()
         batch_acc = correct.sum().item()
 
@@ -213,8 +213,8 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             outputs = model(freq_seq)
             outputs_softmax = torch.softmax(outputs, dim=1)
             outputs_argmax = torch.argmax(outputs_softmax, dim=1)
-            labels_idx = torch.argmax(test_labels, dim=1)
-            confusion.update(outputs_argmax.to("cpu").numpy(), labels_idx.to("cpu").numpy())
+            # labels_idx = torch.argmax(test_labels, dim=1)
+            confusion.update(outputs_argmax.to("cpu").numpy(), test_labels.to("cpu").numpy())
 
             all_outputs.append(outputs.cpu())
             all_labels.append(test_labels.cpu())
@@ -224,7 +224,7 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     all_labels = torch.cat(all_labels, dim=0)
     # 单标签分类，使用softmax输出
     _, predicted = torch.max(all_outputs, dim=1)
-    all_labels = torch.argmax(all_labels, dim=1)
+    # all_labels = torch.argmax(all_labels, dim=1)
     correct = (predicted == all_labels).float()
     batch_acc = correct.sum().item()
 

@@ -13,7 +13,8 @@ import json
 
 # from dataset_vector import data_set_split
 # from dataset import data_set_split
-from dataset.ZJU_dataset_pre import data_set_split
+# from dataset.ZJU_dataset_pre import data_set_split
+from dataset.ZJU_dataset_pre_multiSNR import data_set_split
 try:
     from dataset.ZJU_DroneRFb import DroneRFb_data_set_split
 except Exception:
@@ -23,6 +24,7 @@ except Exception:
 
 from fun import folder_settings, switch_model
 from train_val_test import *
+# from train_val_test_MobileNet_ETF import *
 # from model.ResNet import ExtendedResNet
 
 def set_seed(seed: int):
@@ -54,7 +56,7 @@ def main():
     # /root/miniconda3/bin/python /root/autodl-tmp/lzk/test/main.py --model_path 'ANN22_model.pth' --Train True --Test True --name ANN22
     parser = argparse.ArgumentParser(description="Train a localization model")
     parser.add_argument('--epochs', type=int, default=250, help='Number of training epochs')
-    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
+    parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     # parser.add_argument('--runs', type=str, default='runs_Resnet10_model', help='Loss runing graph')
     parser.add_argument('--Train', type=bool, default=True, help='Switch wheater to train')
@@ -63,25 +65,26 @@ def main():
     parser.add_argument('--TSNE', type=bool, default=False, help='The t-SNE Visualisation')
 
     parser.add_argument('--class_num', type=int, default=10, help='class number')
-    parser.add_argument('--model', type=str, default='ResInc_GAtt', help='switch model')
-    parser.add_argument('--image_path', type=str, default='/root/autodl-tmp/data_set_5e6_-5dB/', help='dataset path')
-    # parser.add_argument('--image_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6_-5dB/', help='dataset path')
+    parser.add_argument('--model', type=str, default='No_projected_rf_projected_attention_medium', help='switch model')
+    # parser.add_argument('--image_path', type=str, default='/root/autodl-tmp/data_set_5e6_-5dB/', help='dataset path')
+    parser.add_argument('--image_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6_-5dB/', help='dataset path')
+    parser.add_argument('--test_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6/', help='dataset path')
     # parser.add_argument('--image_path', type=str, default='/home/lab125/kk/S3R/Data/', help='dataset path')
-    parser.add_argument('--exp_name', type=str, default='-5dB_ResIncbase_GAtt_1', help='the name of the experiment')
+    parser.add_argument('--exp_name', type=str, default='rfAtt_m', help='the name of the experiment')
     parser.add_argument('--Dim', type=str, default=None, help='Dimensionality of the input data, 2 for 2D images, 1 for 1D signals')
 
     parser.add_argument('--config', type=str, default=None, help='配置文件路径，用于加载预设配置')
     parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
-    parser.add_argument('--device', type=str, default='cuda:0', help='Device to use for training/testing')
+    parser.add_argument('--device', type=str, default='cuda:1', help='Device to use for training/testing')
     # parser.add_argument('--num_samples', type=int, default=10000, help='Number of samples to use for training')
 
     args = parser.parse_args()
     print(args)
 
     # Set seeds BEFORE creating model/dataloaders so that parameter init is reproducible
-    set_seed(int(getattr(args, 'seed', 42)))
+    # set_seed(int(getattr(args, 'seed', 42)))
 
-    folder_path = './1030/' + args.exp_name
+    folder_path = './1105/' + args.exp_name
     if not os.path.exists(folder_path):# if the folder does not exist, than create it
         os.makedirs(folder_path)
 

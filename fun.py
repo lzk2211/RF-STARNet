@@ -7,6 +7,7 @@ import os, gc
 import json
 
 import torchvision.models as models
+from model.efficientNetb0 import EfficientNetB0
 from model.LW_1D_resnet import *
 from model.Res_Inc_Net import *
 from model.MLP import *
@@ -27,7 +28,19 @@ from model.S3R_SA import NET as S3R_SA_NET
 from model.S3R_z import NET as S3R_z_NET
 from model.ResInc_GAtt import ResInc_GAtt
 from model.ResInc_with_S3R import NET as ResInc_with_S3R_NET
-from model.ResInc_1DAtt import ResInc_1DAtt
+from model.ResInc_SpAtt import ResInc_SpAtt
+from model.SpectraAtt_T import rf_projected_attention_medium as T_rf_projected_attention_medium
+from model.SpectraAtt_F import rf_projected_attention_medium as F_rf_projected_attention_medium
+
+from model.SpectraAtt import rf_projected_attention_large, rf_projected_attention_medium, rf_projected_attention_small
+from model.SpectraAtt_noProjected import rf_projected_attention_large as No_projected_rf_projected_attention_large
+from model.SpectraAtt_noProjected import rf_projected_attention_medium as No_projected_rf_projected_attention_medium
+
+
+
+from model.ResInc_SpAtt_fusion import ResInc_SpAtt as ResInc_SpAtt_fusion
+
+from model.MobileNetV3Small_ETF import MobileNetV3Small_ETF
 
 from tabulate import tabulate
 
@@ -72,6 +85,8 @@ def switch_model(model, device, num_classes):
     # Update the model to fit your input size and number of classes
     if model == 'resnet34':
         model = resnet34(num_classes=num_classes)
+    elif model == 'EfficientNetB0':
+        model = EfficientNetB0(num_classes=num_classes)
     elif model == 'resnet34_vector_group':
         model = resnet34_vector_group(num_classes=num_classes)
     elif model == '1d_lw_resnet10_256':
@@ -96,6 +111,22 @@ def switch_model(model, device, num_classes):
         model = LightAttentionNet(num_classes=num_classes, device=device, include_top=True)
     elif model == 'RFProjectedAttentionClassifier':
         model = RFProjectedAttentionClassifier(freq_bins=512, seq_len=128, dropout=0, num_classes=num_classes, groups=8, att_dim=32, k_len=64, device=device)
+
+    elif model == 'rf_projected_attention_small':
+        model = rf_projected_attention_small(freq_bins=512, seq_len=128, num_classes=num_classes)
+    elif model == 'rf_projected_attention_medium':
+        model = rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
+    elif model == 'rf_projected_attention_large':
+        model = rf_projected_attention_large(freq_bins=512, seq_len=128, num_classes=num_classes)
+    elif model == 'T_rf_projected_attention_medium':
+        model = T_rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
+    elif model == 'F_rf_projected_attention_medium':
+        model = F_rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
+    elif model == 'No_projected_rf_projected_attention_medium':
+        model = No_projected_rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
+    elif model == 'No_projected_rf_projected_attention_large':
+        model = No_projected_rf_projected_attention_large(freq_bins=512, seq_len=128, num_classes=num_classes)
+
     elif model == 'RFFormer':
         model = RFFormer(in_ch=1, num_classes=num_classes, embed_dim=160, depth=4, num_heads=5, patch_size=(4, 4))
     elif model == 'RFFormer_Gemini':
@@ -114,8 +145,14 @@ def switch_model(model, device, num_classes):
         model = ResInc_GAtt(num_classes=num_classes)
     elif model == 'ResInc_with_S3R':
         model = ResInc_with_S3R_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
-    elif model == 'ResInc_1DAtt':
-        model = ResInc_1DAtt(num_classes=num_classes)
+    elif model == 'ResInc_SpAtt':
+        model = ResInc_SpAtt(num_classes=num_classes)
+    elif model == 'ResInc_SpAtt_fusion':
+        model = ResInc_SpAtt_fusion(num_classes=num_classes, fusion_mode='bilinear')
+
+
+    elif model == 'MobileNetV3Small_ETF':
+        model = MobileNetV3Small_ETF(num_classes=num_classes)
 
     if device == 'cuda' and torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)# two GPUs
