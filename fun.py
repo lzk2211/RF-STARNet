@@ -41,7 +41,7 @@ from model.SpectraAtt_noProjected import rf_projected_attention_medium as No_pro
 
 # from model.ResInc_SpAtt_fusion import ResInc_SpAtt as ResInc_SpAtt_fusion
 
-# from model.MobileNetV3Small_ETF import MobileNetV3Small_ETF
+from model.MobileNetV3Small_ETF import MobileNetV3Small_ETF
 
 from tabulate import tabulate
 

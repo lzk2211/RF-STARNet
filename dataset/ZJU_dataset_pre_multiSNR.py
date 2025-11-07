@@ -132,9 +132,13 @@ def data_set_split(nw, args):
 
                 # --- 2. 应用你想要的 "形式" ---
                 total_samples = len(all_file_paths)
-                
+
+                ###########################   数据采样代码   ###########################
+                total_samples = total_samples * args.ratio # 按比例取样
+                ###########################   数据采样代码   ###########################
+
                 # 创建索引列表
-                indices = list(range(total_samples))
+                indices = list(range(int(total_samples)))
                 
                 # 使用已设置的种子打乱索引
                 random.shuffle(indices) 
