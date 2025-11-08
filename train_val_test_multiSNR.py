@@ -19,6 +19,7 @@ from datetime import datetime
 from tabulate import tabulate
 # 延迟导入 sklearn.metrics、matplotlib、pandas、seaborn 到使用函数内部，避免导入期触发 ABI 问题
 import numpy as np
+from thop import profile
 
 def normalize(matrix):
     # 假设输入矩阵的形状为 (batch_size, height, width)
@@ -61,7 +62,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
     # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-3)
 
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5, verbose=True)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
 
     best_acc = 0.0
     save_path = folder_path + '/model.pth'
@@ -254,6 +255,12 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     print(summary)
 
     # precision, recall, f1, macro_ap, micro_ap = plot_curve(args, predicted, all_labels, folder_path)
+
+    # 计算模型的 FLOPs 和参数量
+    inputs = torch.randn(1, 1, 512, 512).to(device)
+    flops, params = profile(model, (inputs,), verbose=False)
+    print('model: ', args.model, 'flops: ', flops, 'params: ', params)
+
 
     return test_accurate#, precision, recall, f1, macro_ap, micro_ap
 

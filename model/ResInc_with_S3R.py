@@ -343,7 +343,7 @@ class NET(nn.Module):
 # ======================================================
 #  代码块 3: 测试脚本 (来自 S3R.py)
 # ======================================================
-if True:
+if False:
     # device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     
     # # input_size=[T, W] -> [512, 512]

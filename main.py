@@ -66,18 +66,19 @@ def main():
     parser.add_argument('--TSNE', type=bool, default=False, help='The t-SNE Visualisation')
     parser.add_argument('--ratio', type=float, default=1, help='ratio')
 
-    parser.add_argument('--mode', type=str, default='Test', choices=['Train', 'Test'], help='switch mode')
+    parser.add_argument('--mode', type=str, default='Train', choices=['Train', 'Test'], help='switch mode')
     parser.add_argument('--exp_name', type=str, default='rfAtt_m', help='the name of the experiment')
 
     parser.add_argument('--class_num', type=int, default=10, help='class number')
-    parser.add_argument('--model', type=str, default='S3R', help='switch model')
+    parser.add_argument('--model', type=str, default='No_projected_rf_projected_attention_medium', help='switch model')
     # parser.add_argument('--root_path', type=str, default='/root/autodl-tmp/data_set_5e6', help='dataset path')
-    parser.add_argument('--root_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6', help='dataset path')
+    # parser.add_argument('--root_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6', help='dataset path')
+    parser.add_argument('--root_path', type=str, default='/home/kk/D00/data_set_5e6', help='dataset path')
     # parser.add_argument('--test_path', type=str, default='data_set_5e6_-20dB/', help='dataset path')
     # parser.add_argument('--image_path', type=str, default='/home/lab125/kk/S3R/Data/', help='dataset path')
 
     parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
-    parser.add_argument('--device', type=str, default='cuda:1', help='Device to use for training/testing')
+    parser.add_argument('--device', type=str, default='cuda:0', help='Device to use for training/testing')
     # parser.add_argument('--num_samples', type=int, default=10000, help='Number of samples to use for training')
 
     args = parser.parse_args()
@@ -86,7 +87,7 @@ def main():
     # Set seeds BEFORE creating model/dataloaders so that parameter init is reproducible
     # set_seed(int(getattr(args, 'seed', 42)))
 
-    folder_path = './1105/' + args.exp_name
+    folder_path = './1108/' + args.exp_name
     if not os.path.exists(folder_path):# if the folder does not exist, than create it
         os.makedirs(folder_path)
 

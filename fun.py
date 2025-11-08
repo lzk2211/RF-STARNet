@@ -26,7 +26,7 @@ from model.S3R import NET
 from model.S3R_CNN import NET as S3R_CNN_NET
 from model.S3R_SA import NET as S3R_SA_NET
 from model.S3R_z import NET as S3R_z_NET
-from model.ResInc_GAtt import ResInc_GAtt
+# from model.ResInc_GAtt import ResInc_GAtt
 from model.ResInc_with_S3R import NET as ResInc_with_S3R_NET
 from model.ResInc_SpAtt import ResInc_SpAtt
 from model.ResInc_SpAtt_noProjected import ResInc_SpAtt as ResInc_SpAtt_noPro
@@ -154,6 +154,16 @@ def switch_model(model, device, num_classes):
 
     elif model == 'MobileNetV3Small_ETF':
         model = MobileNetV3Small_ETF(num_classes=num_classes)
+
+    elif model == 'F_T_gatefusion':
+        from model.Fcnn_Tatt_gatefusion import ResInc_SpAtt as F_T_gatefusion
+        model = F_T_gatefusion(num_classes=num_classes)
+    elif model == 'F_T_SENet':
+        from model.Fcnn_Tatt_SENet import ResInc_SpAtt as F_T_SENet
+        model = F_T_SENet(num_classes=num_classes)
+    elif model == 'F_T_sp_pool':
+        from model.Fcnn_Tatt_sp_pool import ResInc_SpAtt as F_T_sp_pool
+        model = F_T_sp_pool(num_classes=num_classes)
 
     if device == 'cuda' and torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)# two GPUs
