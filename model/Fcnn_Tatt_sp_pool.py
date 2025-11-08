@@ -90,6 +90,7 @@ class ResInc_SpAtt_Classifier(nn.Module):
 			nn.Dropout(dropout),
 			nn.Linear(hidden_dim, num_classes),
 		)
+		self.sp_pool = AttentivePooling(C_sp)
 
 	def forward(self, x: torch.Tensor, return_features: bool = False) -> torch.Tensor:
 		"""
