@@ -1,8 +1,9 @@
 import math
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional
 
 # try:
 #     from thop import profile
@@ -15,10 +16,14 @@ from typing import Optional
 
 class RelativePositionBias(nn.Module):
     """
-    计算相对位置偏置，支持非方阵 (q_len, k_len) 的情形。
-    - 参数表按 reference `seq_len` 构建，长度为 2*seq_len-1。
-    - 对于任意 (q_len, k_len)，将 q/k 位置映射到参考序列范围 [0, seq_len-1]，
-      以此得到整数相对位移并索引到偏置表，返回形状 (num_heads, q_len, k_len)。
+    相对位置偏置（Relative Position Bias）。
+
+    作用：为注意力打分矩阵提供依赖“相对距离”的可学习偏置，使模型具备时序/相对位置信息感知。
+
+    特性：
+    - 支持非方阵 (q_len, k_len)；
+    - 参数按参考长度 seq_len 构建，范围覆盖相对距离 d ∈ [-(S-1), S-1]，共 2S-1 个；
+    - 返回形状为 (num_heads, q_len, k_len)，可与 (B, q_len, k_len) 广播相加。
     """
     def __init__(self, seq_len: int, num_heads: int = 1):
         super().__init__()
@@ -40,7 +45,7 @@ class RelativePositionBias(nn.Module):
 
     def forward(self, q_len: int, k_len: Optional[int] = None) -> torch.Tensor:
         """
-        返回形状 (num_heads, q_len, k_len) 的偏置矩阵。
+        返回偏置矩阵，形状 (num_heads, q_len, k_len)。
         若 k_len 省略或等于 q_len，则退化为方阵 (q_len, q_len)。
         """
         if k_len is None:
@@ -58,9 +63,6 @@ class RelativePositionBias(nn.Module):
 
         # 将查询/键位置线性映射到参考序列 [0, S-1]
         S = self.seq_len
-        # 避免除零
-        denom_q = max(q_len - 1, 1)
-        denom_k = max(k_len - 1, 1)
         q_pos_ref = torch.round(torch.linspace(0, S - 1, steps=q_len, device=device))  # (q_len,)
         k_pos_ref = torch.round(torch.linspace(0, S - 1, steps=k_len, device=device))  # (k_len,)
 
@@ -73,24 +75,26 @@ class RelativePositionBias(nn.Module):
         return self.relative_bias[:, idx]
     
 class PositionalEncoding(nn.Module):
-    """Positional encoding."""
-    def __init__(self, num_hiddens, dropout, max_len=1000):
-        super(PositionalEncoding, self).__init__()
+    """经典正弦位置编码（本文件默认未启用，仅保留作扩展）。"""
+    def __init__(self, num_hiddens: int, dropout: float, max_len: int = 1000):
+        super().__init__()
         self.dropout = nn.Dropout(dropout)
-        # Create a long enough `P`
         self.P = torch.zeros((1, max_len, num_hiddens))
-        X = torch.arange(max_len, dtype=torch.float32).reshape(
-            -1, 1) / torch.pow(10000, torch.arange(
-            0, num_hiddens, 2, dtype=torch.float32) / num_hiddens)
+        X = torch.arange(max_len, dtype=torch.float32).reshape(-1, 1) / torch.pow(
+            10000, torch.arange(0, num_hiddens, 2, dtype=torch.float32) / num_hiddens
+        )
         self.P[:, :, 0::2] = torch.sin(X)
         self.P[:, :, 1::2] = torch.cos(X)
-    def forward(self, X):
-        X = X + self.P[:, :X.shape[1], :].to(X.device)
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        X = X + self.P[:, : X.shape[1], :].to(X.device)
         return self.dropout(X)
     
 class GroupedProjectedAttentionRF(nn.Module):
     """
-    改写的 GroupedProjectedAttention，专为输入 (B, F, T) 设计。
+    分组注意力（无投影版）。输入形状 (B, C, F, T)，内部按组将 F 维切分为 G 份，
+    每组独立计算 self-attention，并在时间维度上加入“相对位置偏置”。
+    输出形状 (B, F, T)。
     """
 
     def __init__(self,
@@ -98,7 +102,6 @@ class GroupedProjectedAttentionRF(nn.Module):
                  att_dim: int,
                  groups: int,
                  seq_len: int,
-                 k_len: int,
                  use_pos: bool = True,
                  dropout: float = 0.0):
         super().__init__()
@@ -108,11 +111,8 @@ class GroupedProjectedAttentionRF(nn.Module):
         self.groups = groups
         self.gdim = freq_bins // groups
         self.seq_len = seq_len
-        self.k_len = k_len
         self.scale = 1.0 / math.sqrt(att_dim)
         self.use_pos = use_pos
-
-        self.pos_encoding = PositionalEncoding(freq_bins, dropout)
 
         # per-group linear projections
         self.qs = nn.ModuleList([nn.Linear(self.gdim, att_dim, bias=False) for _ in range(groups)])
@@ -120,34 +120,12 @@ class GroupedProjectedAttentionRF(nn.Module):
         self.vs = nn.ModuleList([nn.Linear(self.gdim, self.gdim, bias=False) for _ in range(groups)])
         self.os = nn.ModuleList([nn.Linear(self.gdim, self.gdim, bias=False) for _ in range(groups)])
 
-        # Pk, Pv: (seq_len, k_len) per group
-        self.Pk = nn.ParameterList([nn.Parameter(torch.randn(seq_len, k_len) * (1.0 / math.sqrt(seq_len)))
-                                     for _ in range(groups)])
-        self.Pv = nn.ParameterList([nn.Parameter(torch.randn(seq_len, k_len) * (1.0 / math.sqrt(seq_len)))
-                                     for _ in range(groups)])
-
-        if use_pos:
-            self.time_pos = nn.Parameter(torch.zeros(1, seq_len, 1))
-        else:
-            self.register_parameter('time_pos', None)
+        # 相对位置偏置：按组（num_heads = groups）各自一份
+        self.rel_pos_bias = RelativePositionBias(seq_len=seq_len, num_heads=groups)
 
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
         self.layer_norm = nn.LayerNorm(freq_bins)
-        # self.encoding_to_sa = nn.Sequential(nn.Linear(128, 128), nn.ReLU())
-
-        self.rel_pos_bias = RelativePositionBias(seq_len=seq_len, num_heads=1)
-        
-    def _resample_P(self, P: torch.Tensor, target_T: int) -> torch.Tensor:
-        """
-        P: (seq_len, k_len)
-        return: (target_T, k_len) by linear interpolation along seq_len dim if needed.
-        """
-        if target_T == self.seq_len:
-            return P
-        Pt = P.t().unsqueeze(0)  # (1, k_len, seq_len)
-        Pt_resized = F.interpolate(Pt, size=target_T, mode='linear', align_corners=False)  # (1, k_len, target_T)
-        Pt_resized = Pt_resized.squeeze(0)  # (k_len, target_T)
-        return Pt_resized.t()  # -> (target_T, k_len)
+        # 位置编码模块暂不启用，如需可外部接入
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -155,37 +133,33 @@ class GroupedProjectedAttentionRF(nn.Module):
         returns: out (B, F, T)
         """
 
-        B, C, F, T = x.shape # ([16, 1, 512, 512])
+        B, C, F, T = x.shape
         x = x.squeeze(1)  # (B, F, T)
         assert F == self.freq_bins, f"Input freq dim {F} must equal freq_bins {self.freq_bins}"
 
-        x_t = x # ([16, 512, 512])
+        x_t = x
         x_t = x_t.permute(0, 2, 1)  # (B, T, F)
         x_t = self.layer_norm(x_t)  # normalize over F
 
-        B, T2, D = x_t.shape  # 现在 T2 == 原始 T, D == F
+        B, T2, D = x_t.shape  # T2 == 原始 T, D == F
         G = self.groups
         gdim = self.gdim
 
-        xg = x_t.view(B, T2, G, gdim).permute(0, 2, 1, 3)  # (B, G, T, gdim) ([16, 8, 512, 64])
+        xg = x_t.view(B, T2, G, gdim).permute(0, 2, 1, 3)  # (B, G, T, gdim)
 
         outs = []
+        # 预先计算所有组的相对位置偏置，减少重复构造
+        bias_all = self.rel_pos_bias(T2, T2).to(x_t.device)  # (G, T, T)
         for g in range(G):
-            xg_g = xg[:, g]  # (B, T, gdim) ([16, 512, 64])
+            xg_g = xg[:, g]  # (B, T, gdim)
             q = self.qs[g](xg_g)  # (B, T, att_dim)
             k = self.ks[g](xg_g)  # (B, T, att_dim)
             v = self.vs[g](xg_g)  # (B, T, gdim)
 
-            # Pk_g = self._resample_P(self.Pk[g], T2)  # (T2, k_len)
-            # Pv_g = self._resample_P(self.Pv[g], T2)  # (T2, k_len)
-
-            # k_red = torch.einsum('bta,tk->bka', k, Pk_g)  # (B, k_len, att_dim) ([16, 128, 64])
-            # v_red = torch.einsum('btg,tk->bkg', v, Pv_g)  # (B, k_len, gdim)
-
             att = torch.matmul(q, k.transpose(1, 2)) * self.scale
 
-            bias = self.rel_pos_bias(T2, T2).to(att.device)  # (1, T2, T2)
-            att = att + bias 
+            bias_g = bias_all[g].unsqueeze(0)  # (1, T, T)
+            att = att + bias_g  # (B, T, T) + (1, T, T)
 
             att = torch.softmax(att, dim=-1)
             att = self.dropout(att)
@@ -201,9 +175,8 @@ class GroupedProjectedAttentionRF(nn.Module):
 
 class RFProjectedAttentionClassifier(nn.Module):
     """
-    将 GroupedProjectedAttentionRF 封装为一个分类器：
-    输入 x: (B, C, F, T)
-    输出 logits: (B, num_classes)
+    分类器封装：前端使用 GroupedProjectedAttentionRF 获得 (B, F, T)，
+    再在时间维度做平均池化得到 (B, F)，接多层感知机输出分类 logits。
     """
 
     def __init__(self,
@@ -212,7 +185,6 @@ class RFProjectedAttentionClassifier(nn.Module):
                  num_classes: int = 25,
                  groups: int = 8,
                  att_dim: int = 32,
-                 k_len: int = 64,
                  hidden_dim: Optional[int] = None,
                  use_pos: bool = True,
                  dropout: float = 0.1):
@@ -222,7 +194,6 @@ class RFProjectedAttentionClassifier(nn.Module):
             att_dim=att_dim,
             groups=groups,
             seq_len=seq_len,
-            k_len=k_len,
             use_pos=use_pos,
             dropout=dropout
         )
@@ -252,18 +223,13 @@ class RFProjectedAttentionClassifier(nn.Module):
 #  模型工厂函数 (ResNet 风格)
 # =============================================================================
 
-def rf_projected_attention_small(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
+def rf_att_small(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
     """
-    创建 'small' 版本的 RFProjectedAttentionClassifier。
-    
-    - att_dim: 16
-    - k_len: 32
-    - hidden_dim: 128
+    创建 'small' 版本：att_dim=16，hidden_dim=128。
     """
     config = {
         'groups': 8,      
         'att_dim': 16,    
-        'k_len': 32,      
         'hidden_dim': 128,
         'dropout': 0.1
     }
@@ -277,18 +243,13 @@ def rf_projected_attention_small(freq_bins: int, seq_len: int, num_classes: int,
         **config
     )
 
-def rf_projected_attention_medium(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
+def rf_att_medium(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
     """
-    创建 'medium' 版本的 RFProjectedAttentionClassifier。
-    
-    - att_dim: 32
-    - k_len: 64
-    - hidden_dim: 256
+    创建 'medium' 版本：att_dim=32，hidden_dim=256。
     """
     config = {
         'groups': 8,
         'att_dim': 32,
-        'k_len': 64,
         'hidden_dim': 256,
         'dropout': 0.1
     }
@@ -301,18 +262,13 @@ def rf_projected_attention_medium(freq_bins: int, seq_len: int, num_classes: int
         **config
     )
 
-def rf_projected_attention_large(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
+def rf_att_large(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
     """
-    创建 'large' 版本的 RFProjectedAttentionClassifier。
-    
-    - att_dim: 64
-    - k_len: 128
-    - hidden_dim: 512
+    创建 'large' 版本：att_dim=64，hidden_dim=512。
     """
     config = {
         'groups': 8,
         'att_dim': 64,
-        'k_len': 128,
         'hidden_dim': 512,
         'dropout': 0.1
     }
@@ -325,18 +281,26 @@ def rf_projected_attention_large(freq_bins: int, seq_len: int, num_classes: int,
         **config
     )
 
+__all__ = [
+    'RelativePositionBias',
+    'GroupedProjectedAttentionRF',
+    'RFProjectedAttentionClassifier',
+    'rf_att_small', 'rf_att_medium', 'rf_att_large'
+]
+
 if False:
-    device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
-    model = rf_projected_attention_large(freq_bins=512, seq_len=512, num_classes=25).to(device)
+    # 轻量自检：前向 + 可选 FLOPs/Params
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    model = rf_att_medium(freq_bins=512, seq_len=512, num_classes=25).to(device)
 
-    x = torch.randn(16, 1, 512, 512).to(device)  # batch_size=16
+    x = torch.randn(2, 1, 512, 512, device=device)
     out = model(x)
-    print(out.shape)
+    print('logits shape:', out.shape)
 
-    from torchsummary import summary
-    from thop import profile
-
-    # summary(model, input_size=(1, 512))
-    inputs = torch.randn(1, 1, 512, 512).to(device)
-    flops, params = profile(model, (inputs,))
-    print('flops: ', flops, 'params: ', params)
+    try:
+        from thop import profile
+        inputs = torch.randn(1, 1, 512, 512, device=device)
+        flops, params = profile(model, (inputs,))
+        print('FLOPs:', flops, 'Params:', params)
+    except Exception as e:
+        print('[Info] thop not available or profiling failed:', e)
