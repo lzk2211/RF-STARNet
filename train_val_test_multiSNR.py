@@ -254,6 +254,10 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     summary = f"[Test] Avg Accuracy: {test_accurate:.4f} | -20dB: {snr_datas['-20dB']:.4f} | -15dB: {snr_datas['-15dB']:.4f} | -10dB: {snr_datas['-10dB']:.4f} | -5dB: {snr_datas['-5dB']:.4f} | 0dB: {snr_datas['0dB']:.4f} | 5dB: {snr_datas['5dB']:.4f} | pure: {snr_datas['pure']:.4f}"
     print(summary)
 
+    values = ' '.join(f"{snr_datas[k]:.4f}" for k in ['-20dB','-15dB','-10dB','-5dB','0dB','5dB','pure'])
+    summary2 = f"{args.model} = [{values}];"
+    print(summary2)
+
     # precision, recall, f1, macro_ap, micro_ap = plot_curve(args, predicted, all_labels, folder_path)
 
     # 计算模型的 FLOPs 和参数量

@@ -67,10 +67,10 @@ def main():
     parser.add_argument('--ratio', type=float, default=1, help='ratio')
 
     parser.add_argument('--mode', type=str, default='Train', choices=['Train', 'Test'], help='switch mode')
-    parser.add_argument('--exp_name', type=str, default='rfAtt_m', help='the name of the experiment')
+    parser.add_argument('--exp_name', type=str, default='Res_Inc_Net_base_SW', help='the name of the experiment')
 
     parser.add_argument('--class_num', type=int, default=10, help='class number')
-    parser.add_argument('--model', type=str, default='No_projected_rf_projected_attention_medium', help='switch model')
+    parser.add_argument('--model', type=str, default='Res_Inc_Net_base_SW', help='switch model')
     # parser.add_argument('--root_path', type=str, default='/root/autodl-tmp/data_set_5e6', help='dataset path')
     # parser.add_argument('--root_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6', help='dataset path')
     parser.add_argument('--root_path', type=str, default='/home/kk/D00/data_set_5e6', help='dataset path')
@@ -124,6 +124,7 @@ def main():
     
     if args.mode == 'Train':
         train(args, folder_path, model, device, train_loader, validate_loader)
+        test(args, folder_path, model, device, test_loader, target_classes)
 
 
     if args.mode == 'Test':
