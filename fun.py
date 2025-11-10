@@ -165,6 +165,47 @@ def switch_model(model, device, num_classes):
         from model.Fcnn_Tatt_sp_pool import ResInc_SpAtt as F_T_sp_pool
         model = F_T_sp_pool(num_classes=num_classes)
 
+
+
+    elif model == 'F_T_news':
+        from newmodels.Fcnn_Tatt import ResInc_SpAtt as F_T_news
+        model = F_T_news(num_classes=10)
+
+    elif model == 'Res_Inc_Net_tiny':
+        from newmodels.Res_Inc_Net import Res_Inc_Net_tiny
+        model = Res_Inc_Net_tiny(num_classes=num_classes, include_top=True)
+    elif model == 'Res_Inc_Net_small':
+        from newmodels.Res_Inc_Net import Res_Inc_Net_small
+        model = Res_Inc_Net_small(num_classes=num_classes, include_top=True)
+    elif model == 'Res_Inc_Net_base':
+        from newmodels.Res_Inc_Net import Res_Inc_Net_base
+        model = Res_Inc_Net_base(num_classes=num_classes, include_top=True)
+    elif model == 'Res_Inc_Net_large':
+        from newmodels.Res_Inc_Net import Res_Inc_Net_large
+        model = Res_Inc_Net_large(num_classes=num_classes, include_top=True)
+
+    elif model == 'SW_Res_Inc_Net_base':
+        from newmodels.Res_Inc_Net_SWConv import SW_Res_Inc_Net_base
+        model = SW_Res_Inc_Net_base(num_classes=num_classes, include_top=True)
+    elif model == 'SW_Res_Inc_Net_base_SENet':
+        from newmodels.Res_Inc_Net_SWConv_ECANet import SW_Res_Inc_Net_base as SW_Res_Inc_Net_base_SENet
+        model = SW_Res_Inc_Net_base_SENet(num_classes=num_classes, include_top=True)
+    elif model == 'SW_Res_Inc_Net_base_ECANet':
+        from newmodels.Res_Inc_Net_SWConv_ECANet import SW_Res_Inc_Net_base as SW_Res_Inc_Net_base_ECANet
+        model = SW_Res_Inc_Net_base_ECANet(num_classes=num_classes, include_top=True)
+
+    elif model == 'rf_att_small':
+        from newmodels.SpectraAtt_noProjected import rf_att_small
+        model = rf_att_small(freq_bins=512, seq_len=128, num_classes=num_classes)
+    elif model == 'rf_att_medium':
+        from newmodels.SpectraAtt_noProjected import rf_att_medium
+        model = rf_att_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
+    elif model == 'rf_att_large':
+        from newmodels.SpectraAtt_noProjected import rf_att_large
+        model = rf_att_large(freq_bins=512, seq_len=128, num_classes=num_classes)
+
+
+
     if device == 'cuda' and torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)# two GPUs
     model.to(device)
