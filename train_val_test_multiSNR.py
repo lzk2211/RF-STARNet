@@ -21,6 +21,9 @@ from tabulate import tabulate
 import numpy as np
 from thop import profile
 
+from collections import defaultdict  # NEW: 用于构建嵌套字典
+from sklearn.metrics import precision_recall_fscore_support  # NEW: 导入计算指标的工具
+
 def normalize(matrix):
     # 假设输入矩阵的形状为 (batch_size, height, width)
     batch_size = matrix.shape[0]
@@ -58,7 +61,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
 
     # 单标签损失与优化器
     loss_function = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-3)
 
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
@@ -207,35 +210,67 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     model.load_state_dict(torch.load(model_path, weights_only=True, map_location=device))
 
     model.to(device)
-    
     model.eval()
+    
     all_outputs = []
     all_labels = []
-    snrs = []
-    snr_datas = {"-20dB": 0, "-15dB": 0, "-10dB": 0, "-5dB": 0, "0dB": 0, "5dB": 0, "pure": 0}
+    
+    # NEW: 创建一个字典来按SNR存储预测和标签
+    # 结构: {'-20dB': {'preds': [...], 'labels': [...]}, '-15dB': ...}
+    snr_results = defaultdict(lambda: {'preds': [], 'labels': []})
+    
+    # 推理计时与显存统计准备
+    total_infer_start = time.time()
+    if torch.cuda.is_available() and (device.type == 'cuda' or 'cuda' in str(device)):
+        torch.cuda.synchronize()
+        try:
+            torch.cuda.reset_peak_memory_stats(device)
+        except Exception:
+            pass
+
     with torch.no_grad():
         test_bar = tqdm(test_loader, file=sys.stdout)
         for test_data in test_bar:
-            freq_seq, test_labels, snr = test_data
+            iter_start = time.time()
+            freq_seq, test_labels, snr_batch = test_data  # 'snr' 重命名为 'snr_batch' 避免与列表混淆
             freq_seq = freq_seq.to(device)
             test_labels = test_labels.to(device)
 
             outputs = model(freq_seq)
             outputs_softmax = torch.softmax(outputs, dim=1)
             outputs_argmax = torch.argmax(outputs_softmax, dim=1)
-            # labels_idx = torch.argmax(test_labels, dim=1)
-            confusion.update(outputs_argmax.to("cpu").numpy(), test_labels.to("cpu").numpy())
+            
+            # NEW: 将CPU上的结果存入 snr_results 字典
+            batch_preds = outputs_argmax.cpu().numpy()
+            batch_labels = test_labels.cpu().numpy()
+            
+            for i in range(len(batch_labels)):
+                current_snr = snr_batch[i]
+                snr_results[current_snr]['preds'].append(batch_preds[i])
+                snr_results[current_snr]['labels'].append(batch_labels[i])
 
+            # (这部分保持不变，用于计算总体混淆矩阵和总准确率)
+            confusion.update(batch_preds, batch_labels)
             all_outputs.append(outputs.cpu())
             all_labels.append(test_labels.cpu())
-            snrs.extend(snr)
 
-    # 合并所有 batch
+            # 可选：记录每 batch 用时（不做逐条打印，避免刷屏）
+            _ = time.time() - iter_start
+
+    # --- 循环后，统计推理时间与显存 ---
+    if torch.cuda.is_available() and (device.type == 'cuda' or 'cuda' in str(device)):
+        torch.cuda.synchronize()
+        peak_mem = torch.cuda.max_memory_allocated(device)
+        cur_mem = torch.cuda.memory_allocated(device)
+    else:
+        peak_mem = 0
+        cur_mem = 0
+    total_infer_sec = time.time() - total_infer_start
+    
+    # (这部分保持不变，用于计算总体混淆矩阵和总准确率)
     all_outputs = torch.cat(all_outputs, dim=0)
     all_labels = torch.cat(all_labels, dim=0)
-    # 单标签分类，使用softmax输出
     _, predicted = torch.max(all_outputs, dim=1)
-    # all_labels = torch.argmax(all_labels, dim=1)
     correct = (predicted == all_labels).float()
     batch_acc = correct.sum().item()
 
@@ -244,175 +279,102 @@ def test(args, folder_path, model, device, test_loader, target_classes):
 
     test_acc = batch_acc
     test_accurate = test_acc / len(test_loader.dataset)
+    print('[Test] Overall Accuracy: %.3f' % test_accurate)
+    # 统计吞吐与GPU小时（按单 GPU 计）
+    total_samples = len(test_loader.dataset)
+    samples_per_sec = (total_samples / total_infer_sec) if total_infer_sec > 0 else 0.0
+    gpu_hours = total_infer_sec / 3600.0
+    samples_per_gpu_hour = total_samples / gpu_hours if gpu_hours > 0 else 0.0
+    # 显存 MB
+    mem_mb = cur_mem / (1024**2)
+    peak_mb = peak_mem / (1024**2)
+    avg_ms_per_sample = (total_infer_sec / total_samples * 1000.0) if total_samples > 0 else 0.0
+    print(f"[Test] Inference time: {total_infer_sec:.3f}s | {avg_ms_per_sample:.3f} ms/sample | Throughput: {samples_per_sec:.2f} samples/s")
+    print(f"[Test] GPU memory: current {mem_mb:.1f} MB | peak {peak_mb:.1f} MB | GPU-hours: {gpu_hours:.4f} h | samples/GPU-hour: {samples_per_gpu_hour:.1f}")
 
-    for i, corr in enumerate(correct):
-        snr_datas[snrs[i]] += 1 if corr.item() == 1 else 0
-    for key, value in snr_datas.items():
-        snr_datas[key] = value / snrs.count(key)
+    # --- NEW: 按SNR计算详细指标 (替换您原有的 snr_datas 循环) ---
+    
+    print("\n--- Per-SNR Metrics Summary ---")
+    print(f"{'SNR':<8} | {'Accuracy':<10} | {'Precision':<10} | {'Recall':<10} | {'F1-Score':<10}")
+    print("-" * 54)
 
-    print('[Test] Accuracy: %.3f' % test_accurate)
-    summary = f"[Test] Avg Accuracy: {test_accurate:.4f} | -20dB: {snr_datas['-20dB']:.4f} | -15dB: {snr_datas['-15dB']:.4f} | -10dB: {snr_datas['-10dB']:.4f} | -5dB: {snr_datas['-5dB']:.4f} | 0dB: {snr_datas['0dB']:.4f} | 5dB: {snr_datas['5dB']:.4f} | pure: {snr_datas['pure']:.4f}"
-    print(summary)
+    snr_levels = ['-20dB', '-15dB', '-10dB', '-5dB', '0dB', '5dB', 'pure']
+    snr_accuracy_data = {}   # 每个 SNR 的准确率
+    snr_precision_data = {}  # 每个 SNR 的宏平均精确率
+    snr_recall_data = {}     # 每个 SNR 的宏平均召回率
+    snr_f1_data = {}         # 每个 SNR 的宏平均 F1
 
-    values = ' '.join(f"{snr_datas[k]:.4f}" for k in ['-20dB','-15dB','-10dB','-5dB','0dB','5dB','pure'])
-    summary2 = f"{args.model} = [{values}];"
-    print(summary2)
+    for snr_val in snr_levels:
+        if snr_val not in snr_results:
+            print(f"Warning: No data found for SNR {snr_val}")
+            snr_accuracy_data[snr_val] = 0
+            snr_precision_data[snr_val] = 0
+            snr_recall_data[snr_val] = 0
+            snr_f1_data[snr_val] = 0
+            continue
+            
+        snr_preds = snr_results[snr_val]['preds']
+        snr_labels = snr_results[snr_val]['labels']
+        
+        if len(snr_labels) == 0:
+            print(f"Warning: No samples for SNR {snr_val}")
+            snr_accuracy_data[snr_val] = 0
+            snr_precision_data[snr_val] = 0
+            snr_recall_data[snr_val] = 0
+            snr_f1_data[snr_val] = 0
+            continue
 
-    # precision, recall, f1, macro_ap, micro_ap = plot_curve(args, predicted, all_labels, folder_path)
+        # 使用 sklearn.metrics.precision_recall_fscore_support
+        # average='macro': 计算每个类的指标，然后取平均值，不考虑类别不平衡
+        # zero_division=0: 避免在分母为0时（例如某个类从未被预测）打印警告
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            snr_labels, 
+            snr_preds, 
+            average='macro', 
+            zero_division=0
+        )
+        
+        # 单独计算准确率
+        correct_predictions = sum(p == l for p, l in zip(snr_preds, snr_labels))
+        accuracy = correct_predictions / len(snr_labels)
 
-    # 计算模型的 FLOPs 和参数量
+        # 存储各指标
+        snr_accuracy_data[snr_val] = accuracy
+        snr_precision_data[snr_val] = precision
+        snr_recall_data[snr_val] = recall
+        snr_f1_data[snr_val] = f1
+
+        # 打印新表格
+        print(f"{snr_val:<8} | {accuracy:<10.4f} | {precision:<10.4f} | {recall:<10.4f} | {f1:<10.4f}")
+
+    print("--- End of Summary ---")
+
+    # --- (这部分使用新的 snr_accuracy_data，保持您原有的输出格式) ---
+    
+    # MATLAB-friendly one-liners for easy copy
+    values_acc = ', '.join(f"{snr_accuracy_data[k]:.4f}" for k in snr_levels)
+    values_prec = ', '.join(f"{snr_precision_data[k]:.4f}" for k in snr_levels)
+    values_rec = ', '.join(f"{snr_recall_data[k]:.4f}" for k in snr_levels)
+    values_f1 = ', '.join(f"{snr_f1_data[k]:.4f}" for k in snr_levels)
+
+    # 计算模型的 FLOPs 和参数量（放在结构体输出前，以便一起打印）
     inputs = torch.randn(1, 1, 512, 512).to(device)
     flops, params = profile(model, (inputs,), verbose=False)
-    print('model: ', args.model, 'flops: ', flops, 'params: ', params)
+    flops_int = int(flops)  # 转为整数更便于 MATLAB 处理
+    params_int = int(params)
+
+    # MATLAB struct-style dictionary for easy paste (加入 flops/params & 推理统计)
+    metrics_struct = (
+        f"{args.model}_metrics = {{'acc': [{values_acc}], 'precision': [{values_prec}], "
+        f"'recall': [{values_rec}], 'f1': [{values_f1}], 'flops': {flops_int}, 'params': {params_int}, "
+        f"'infer_sec': {total_infer_sec:.6f}, 'infer_mem_MB': {mem_mb:.2f}, 'infer_peak_MB': {peak_mb:.2f}, "
+        f"'samples_per_sec': {samples_per_sec:.4f}, 'gpu_hours': {gpu_hours:.6f}, 'samples_per_gpu_hour': {samples_per_gpu_hour:.2f}}}"
+    )
+    print(metrics_struct)
+    print(f"(model complexity) flops={flops_int}, params={params_int}")
+
+    # precision, recall, f1, macro_ap, micro_ap = plot_curve(args, predicted, all_labels, folder_path)
 
 
     return test_accurate#, precision, recall, f1, macro_ap, micro_ap
 
-def plot_curve(args, all_probs, all_labels, folder_path):
-    # 延迟导入，避免启动时 ABI 问题；仅在需要画 PR 曲线时使用
-    from sklearn.metrics import precision_recall_curve, average_precision_score
-    from sklearn.metrics import precision_score, recall_score, f1_score
-    import matplotlib
-    matplotlib.use('Agg', force=True)
-    import matplotlib.pyplot as plt
-    # ====== 画PR曲线 ======
-    # ====== 计算PR、精确率、召回率、AP =======
-    all_probs = torch.cat(all_probs, dim=0).numpy()   # shape: [样本数, 类别数]
-    all_labels = torch.cat(all_labels, dim=0).numpy() # shape: [样本数, 类别数] - 多标签格式    # 每个类别的AP（平均精确率）
-    ap_scores = []
-    for class_idx in range(args.class_num):
-        binary_labels = all_labels[:, class_idx]  # 每个类别的二元标签 (0或1)
-        class_probs = all_probs[:, class_idx]     # 每个类别的预测概率
-        
-        ap_score = average_precision_score(binary_labels, class_probs)
-        ap_scores.append(ap_score)
-
-    # 宏平均AP
-    macro_ap = np.mean(ap_scores)
-
-    # 微平均AP（对所有样本计算）
-    micro_ap = average_precision_score(all_labels.ravel(), all_probs.ravel())    # 计算多标签情况下的精确率、召回率、F1
-    # 将概率转换为二进制预测 (阈值0.5)
-    binary_preds = (all_probs >= 0.5).astype(int)
-    
-    # 使用样本级别的平均计算每个指标
-    precision = precision_score(all_labels, binary_preds, average='samples')
-    recall = recall_score(all_labels, binary_preds, average='samples')
-    f1 = f1_score(all_labels, binary_preds, average='samples')
-
-    # 打印
-    print(f"Macro-averaged Precision: {precision:.4f}")
-    print(f"Macro-averaged Recall: {recall:.4f}")
-    print(f"Macro-averaged F1: {f1:.4f}")
-    print(f"Macro-averaged AP: {macro_ap:.4f}")
-    print(f"Micro-averaged AP: {micro_ap:.4f}")
-
-    all_num = precision, recall, f1, macro_ap, micro_ap    # ====== 画PR曲线（多标签）======
-    plt.figure()
-    for class_idx in range(args.class_num):
-        binary_labels = all_labels[:, class_idx]  # 获取第class_idx类的所有标签
-        class_probs = all_probs[:, class_idx]    # 获取第class_idx类的所有预测概率
-
-        precision, recall, _ = precision_recall_curve(binary_labels, class_probs)
-        ap_score = average_precision_score(binary_labels, class_probs)
-
-        plt.plot(recall, precision, label=f'Class {class_idx} (AP={ap_score:.4f})')
-
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision-Recall Curve (per class)')
-    plt.legend()
-    plt.grid()
-    plt.savefig(os.path.join(folder_path, 'pr_curve_all_classes.png'))
-    plt.close()
-
-    print("PR曲线已保存到:", os.path.join(folder_path, 'pr_curve_all_classes.png'))
-    return all_num
-
-
-def test_plot(all_labels, predicted, target_classes, folder_path):
-    '''
-    画出热图并且输出各类别的准确率
-    all_labels: 真实标签，shape: [样本数, 类别数]
-    predicted: 模型预测标签，shape: [样本数, 类别数]
-    target_classes: 类别名称列表
-    folder_path: 保存结果的文件夹路径
-    '''
-    # 计算正确性矩阵：1 = 正确，0 = 错误
-    correct_matrix = (all_labels.numpy() == predicted.numpy()).astype(int)
-
-    # 找出有错误的样本（行）
-    error_rows_mask = (correct_matrix.sum(axis=1) < correct_matrix.shape[1])
-    error_matrix = correct_matrix[error_rows_mask]
-
-    # 构建可视化矩阵：正确为 1，错误为 -1
-    vis_matrix = np.where(error_matrix == 1, 1, -1)
-
-    # 画图（延迟导入，若失败则跳过）
-    try:
-        import matplotlib
-        matplotlib.use('Agg', force=True)
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        import pandas as pd
-    except Exception as e:
-        print(f"Skip error heatmap due to plotting deps issue: {e}")
-        plt = None
-
-    if plt is not None:
-        plt.figure(figsize=(min(20, vis_matrix.shape[1]), max(6, vis_matrix.shape[0] * 0.25)))
-        sns.heatmap(vis_matrix, cmap=sns.color_palette(["red", "blue"]), cbar=False,
-                    xticklabels=target_classes,
-                    yticklabels=[f"S{i}" for i in np.where(error_rows_mask)[0]])
-        plt.title("Prediction Correctness Heatmap (Only Samples with Errors)")
-        plt.xlabel("Labels")
-        plt.ylabel("Sample Index (Only Error Rows)")
-        plt.tight_layout()
-        plt.savefig(os.path.join(folder_path, "error_samples_heatmap.png"))
-    # plt.show()
-
-    true_labels = all_labels.numpy()
-    pred_labels = predicted.numpy()
-
-    TP = np.logical_and(true_labels == 1, pred_labels == 1).sum(axis=0)
-    FN = np.logical_and(true_labels == 1, pred_labels == 0).sum(axis=0)
-
-    denominator = TP + FN
-    denominator[denominator == 0] = 1  # 防止除零
-
-    class_accuracy = TP / denominator
-
-    try:
-        import pandas as pd
-        acc_df = pd.DataFrame({
-            "Class": target_classes,
-            "Accuracy": class_accuracy
-        })
-        print(acc_df)
-    except Exception:
-        print({"Class": target_classes, "Accuracy": class_accuracy})
-
-
-def save_results(folder_path, acc,  precision, recall, f1, macro_ap, micro_ap, table_data):
-
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-
-    # 生成文件名，带时间戳
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    result_file = os.path.join(folder_path, f"results_{timestamp}.txt")
-
-    with open(result_file, "w") as f:
-        f.write("The training parameters are as follows\n")
-        f.write(tabulate(table_data, headers=["Parameter", "Value"], tablefmt="grid"))
-        f.write("\n\n***********************************************************************\n\n")
-        f.write(f"Run Timestamp: {timestamp}\n")
-        f.write(f"Accuracy: {acc:.4f}\n")
-        f.write(f"Macro-averaged Precision: {precision:.4f}\n")
-        f.write(f"Macro-averaged Recall: {recall:.4f}\n")
-        f.write(f"Macro-averaged F1: {f1:.4f}\n")
-        f.write(f"Macro-averaged AP: {macro_ap:.4f}\n")
-        f.write(f"Micro-averaged AP: {micro_ap:.4f}\n")
-        f.write("Metrics:\n")
-    
-    print(f"Results saved to {result_file}")
