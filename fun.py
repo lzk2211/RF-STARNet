@@ -82,95 +82,103 @@ def folder_settings(args, folder_path):
     print(tabulate(table_data, headers=["Parameter", "Value"], tablefmt="grid"))
     return device, nw, table_data
 
-def switch_model(model, device, num_classes):
+def switch_model(mode, model, device, num_classes):
     # Update the model to fit your input size and number of classes
     if model == 'resnet34':
         model = resnet34(num_classes=num_classes)
-    elif model == 'EfficientNetB0':
-        model = EfficientNetB0(num_classes=num_classes)
-    elif model == 'resnet34_vector_group':
-        model = resnet34_vector_group(num_classes=num_classes)
-    elif model == '1d_lw_resnet10_256':
-        model = resnet10_vector_group(num_classes=num_classes)
-    elif model == 'Res_Inc_Net':
-        model = Res_Inc_Net(num_classes=num_classes)
-    elif model == 'Res_Inc_Net_large':
-        model = Res_Inc_Net_large(num_classes=num_classes)
-    elif model == 'Res_Inc_Net_50':
-        model = Res_Inc_Net_50(num_classes=num_classes, include_top=True)
-    elif model == 'Res_Inc_Net_101':
-        model = Res_Inc_Net_101(num_classes=num_classes, include_top=True)
-    elif model == 'Res_Inc_Net_base':
-        model = Res_Inc_Net_base(num_classes=num_classes, include_top=True)
-    elif model == 'Res_Inc_Net_small':
-        model = Res_Inc_Net_small(num_classes=num_classes, include_top=True)
-    elif model == 'Res_Inc_Net_tiny':
-        model = Res_Inc_Net_tiny(num_classes=num_classes, include_top=True)
-    elif model == 'TimeSeqSA':
-        model = TimeSeqSA(num_classes=num_classes)
-    elif model == 'LightAttentionNet':
-        model = LightAttentionNet(num_classes=num_classes, device=device, include_top=True)
-    elif model == 'RFProjectedAttentionClassifier':
-        model = RFProjectedAttentionClassifier(freq_bins=512, seq_len=128, dropout=0, num_classes=num_classes, groups=8, att_dim=32, k_len=64, device=device)
+    elif model == 'resnet18':
+        model = resnet18(num_classes=num_classes)
+    # elif model == 'EfficientNetB0':
+    #     model = EfficientNetB0(num_classes=num_classes)
+    # elif model == 'resnet34_vector_group':
+    #     model = resnet34_vector_group(num_classes=num_classes)
+    # elif model == '1d_lw_resnet10_256':
+    #     model = resnet10_vector_group(num_classes=num_classes)
+    # elif model == 'Res_Inc_Net':
+    #     model = Res_Inc_Net(num_classes=num_classes)
+    # elif model == 'Res_Inc_Net_large':
+    #     model = Res_Inc_Net_large(num_classes=num_classes)
+    # elif model == 'Res_Inc_Net_50':
+    #     model = Res_Inc_Net_50(num_classes=num_classes, include_top=True)
+    # elif model == 'Res_Inc_Net_101':
+    #     model = Res_Inc_Net_101(num_classes=num_classes, include_top=True)
+    # elif model == 'Res_Inc_Net_base':
+    #     model = Res_Inc_Net_base(num_classes=num_classes, include_top=True)
+    # elif model == 'Res_Inc_Net_small':
+    #     model = Res_Inc_Net_small(num_classes=num_classes, include_top=True)
+    # elif model == 'Res_Inc_Net_tiny':
+    #     model = Res_Inc_Net_tiny(num_classes=num_classes, include_top=True)
+    # elif model == 'TimeSeqSA':
+    #     model = TimeSeqSA(num_classes=num_classes)
+    # elif model == 'LightAttentionNet':
+    #     model = LightAttentionNet(num_classes=num_classes, device=device, include_top=True)
+    # elif model == 'RFProjectedAttentionClassifier':
+    #     model = RFProjectedAttentionClassifier(freq_bins=512, seq_len=128, dropout=0, num_classes=num_classes, groups=8, att_dim=32, k_len=64, device=device)
 
-    elif model == 'rf_projected_attention_small':
-        model = rf_projected_attention_small(freq_bins=512, seq_len=128, num_classes=num_classes)
-    elif model == 'rf_projected_attention_medium':
-        model = rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
-    elif model == 'rf_projected_attention_large':
-        model = rf_projected_attention_large(freq_bins=512, seq_len=128, num_classes=num_classes)
-    elif model == 'T_rf_projected_attention_medium':
-        model = T_rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
-    elif model == 'F_rf_projected_attention_medium':
-        model = F_rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
-    elif model == 'No_projected_rf_projected_attention_medium':
-        model = No_projected_rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
-    elif model == 'No_projected_rf_projected_attention_large':
-        model = No_projected_rf_projected_attention_large(freq_bins=512, seq_len=128, num_classes=num_classes)
+    # elif model == 'rf_projected_attention_small':
+    #     model = rf_projected_attention_small(freq_bins=512, seq_len=128, num_classes=num_classes)
+    # elif model == 'rf_projected_attention_medium':
+    #     model = rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
+    # elif model == 'rf_projected_attention_large':
+    #     model = rf_projected_attention_large(freq_bins=512, seq_len=128, num_classes=num_classes)
+    # elif model == 'T_rf_projected_attention_medium':
+    #     model = T_rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
+    # elif model == 'F_rf_projected_attention_medium':
+    #     model = F_rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
+    # elif model == 'No_projected_rf_projected_attention_medium':
+    #     model = No_projected_rf_projected_attention_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
+    # elif model == 'No_projected_rf_projected_attention_large':
+    #     model = No_projected_rf_projected_attention_large(freq_bins=512, seq_len=128, num_classes=num_classes)
 
-    elif model == 'RFFormer':
-        model = RFFormer(in_ch=1, num_classes=num_classes, embed_dim=160, depth=4, num_heads=5, patch_size=(4, 4))
-    elif model == 'RFFormer_Gemini':
-        model = RFFormer_Gemini(num_classes=num_classes, seq_len=128, embed_dim=128, num_layers=4, num_heads=4)
-    elif model == 'RFFormer_Gemini2':
-        model = RFFormer_Gemini2(num_classes=num_classes, patch_size_f=64, patch_size_t=8, embed_dim=128, num_layers=4, num_heads=4)
+    # elif model == 'RFFormer':
+    #     model = RFFormer(in_ch=1, num_classes=num_classes, embed_dim=160, depth=4, num_heads=5, patch_size=(4, 4))
+    # elif model == 'RFFormer_Gemini':
+    #     model = RFFormer_Gemini(num_classes=num_classes, seq_len=128, embed_dim=128, num_layers=4, num_heads=4)
+    # elif model == 'RFFormer_Gemini2':
+    #     model = RFFormer_Gemini2(num_classes=num_classes, patch_size_f=64, patch_size_t=8, embed_dim=128, num_layers=4, num_heads=4)
     elif model == 'S3R':
         model = NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
-    elif model == 'S3R_CNN':
-        model = S3R_CNN_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
-    elif model == 'S3R_SA':
-        model = S3R_SA_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
-    elif model == 'S3R_z':
-        model = S3R_z_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
-    elif model == 'ResInc_GAtt':
-        model = ResInc_GAtt(num_classes=num_classes)
-    elif model == 'ResInc_with_S3R':
-        model = ResInc_with_S3R_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
-    elif model == 'ResInc_SpAtt':
-        model = ResInc_SpAtt(num_classes=num_classes)
-    elif model == 'ResInc_SpAtt_noPro':
-        model = ResInc_SpAtt_noPro(num_classes=num_classes)
+    # elif model == 'S3R_CNN':
+    #     model = S3R_CNN_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
+    # elif model == 'S3R_SA':
+    #     model = S3R_SA_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
+    # elif model == 'S3R_z':
+    #     model = S3R_z_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
+    # elif model == 'ResInc_GAtt':
+    #     model = ResInc_GAtt(num_classes=num_classes)
+    # elif model == 'ResInc_with_S3R':
+    #     model = ResInc_with_S3R_NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=num_classes, device=device)
+    # elif model == 'ResInc_SpAtt':
+    #     model = ResInc_SpAtt(num_classes=num_classes)
+    # elif model == 'ResInc_SpAtt_noPro':
+    #     model = ResInc_SpAtt_noPro(num_classes=num_classes)
 
 
     elif model == 'MobileNetV3Small_ETF':
         model = MobileNetV3Small_ETF(num_classes=num_classes)
-
-    elif model == 'F_T_gatefusion':
-        from model.Fcnn_Tatt_gatefusion import ResInc_SpAtt as F_T_gatefusion
-        model = F_T_gatefusion(num_classes=num_classes)
-    elif model == 'F_T_SENet':
-        from model.Fcnn_Tatt_SENet import ResInc_SpAtt as F_T_SENet
-        model = F_T_SENet(num_classes=num_classes)
-    elif model == 'F_T_sp_pool':
-        from model.Fcnn_Tatt_sp_pool import ResInc_SpAtt as F_T_sp_pool
-        model = F_T_sp_pool(num_classes=num_classes)
+    elif model == 'IM_MDSA':
+        from model1113.im_mdsa_model import IM_MDSA
+        model = IM_MDSA(num_classes=num_classes)
 
 
+    # elif model == 'F_T_gatefusion':
+    #     from model.Fcnn_Tatt_gatefusion import ResInc_SpAtt as F_T_gatefusion
+    #     model = F_T_gatefusion(num_classes=num_classes)
+    # elif model == 'F_T_SENet':
+    #     from model.Fcnn_Tatt_SENet import ResInc_SpAtt as F_T_SENet
+    #     model = F_T_SENet(num_classes=num_classes)
+    # elif model == 'F_T_sp_pool':
+    #     from model.Fcnn_Tatt_sp_pool import ResInc_SpAtt as F_T_sp_pool
+    #     model = F_T_sp_pool(num_classes=num_classes)
 
-    elif model == 'F_T_news':
-        from newmodels.Fcnn_Tatt import ResInc_SpAtt as F_T_news
-        model = F_T_news(num_classes=10)
 
+
+    # elif model == 'F_T_news':
+    #     from newmodels.Fcnn_Tatt import ResInc_SpAtt as F_T_news
+    #     model = F_T_news(num_classes=10)
+
+
+# 1110
     elif model == 'Res_Inc_Net_tiny':
         from newmodels.Res_Inc_Net import Res_Inc_Net_tiny
         model = Res_Inc_Net_tiny(num_classes=num_classes, include_top=True)
@@ -180,9 +188,33 @@ def switch_model(model, device, num_classes):
     elif model == 'Res_Inc_Net_base':
         from newmodels.Res_Inc_Net import Res_Inc_Net_base
         model = Res_Inc_Net_base(num_classes=num_classes, include_top=True)
+    elif model == 'Res_Inc_Net_base_nodropout':
+        from newmodels.Res_Inc_Net import Res_Inc_Net_base
+        model = Res_Inc_Net_base(num_classes=num_classes, include_top=True, dropout=0.0)
+    elif model == 'Res_Inc_Net_base_bigdropout':
+        from newmodels.Res_Inc_Net import Res_Inc_Net_base
+        model = Res_Inc_Net_base(num_classes=num_classes, include_top=True, dropout=0.75)
+
     elif model == 'Res_Inc_Net_large':
         from newmodels.Res_Inc_Net import Res_Inc_Net_large
         model = Res_Inc_Net_large(num_classes=num_classes, include_top=True)
+
+    elif model == 'Multi_Res_tiny':
+        from model1113.Multidilation_ResNet import Res_Inc_Net_tiny
+        model = Res_Inc_Net_tiny(num_classes=num_classes, include_top=True)
+    elif model == 'Multi_Res_small':
+        from model1113.Multidilation_ResNet import Res_Inc_Net_small
+        model = Res_Inc_Net_small(num_classes=num_classes, include_top=True)
+    elif model == 'Multi_Res_base':
+        from model1113.Multidilation_ResNet import Res_Inc_Net_base
+        model = Res_Inc_Net_base(num_classes=num_classes, include_top=True)
+    elif model == 'Multi_Res_large':
+        from model1113.Multidilation_ResNet import Res_Inc_Net_large
+        model = Res_Inc_Net_large(num_classes=num_classes, include_top=True)
+    elif model == 'Spectral_Res_SE_small':
+        from model1113.Spectral_Resolution_old import Res_Inc_Net_small
+        model = Res_Inc_Net_small(num_classes=num_classes, include_top=True)
+
 
     elif model == 'SW_Res_Inc_Net_base':
         from newmodels.Res_Inc_Net_SWConv import SW_Res_Inc_Net_base
@@ -190,6 +222,14 @@ def switch_model(model, device, num_classes):
     elif model == 'SW_Res_Inc_Net_base_SENet':
         from newmodels.Res_Inc_Net_SWConv_ECANet import SW_Res_Inc_Net_base as SW_Res_Inc_Net_base_SENet
         model = SW_Res_Inc_Net_base_SENet(num_classes=num_classes, include_top=True)
+    elif model == 'SW_Res_Inc_Net_small_SENet':
+        from model1113.Res_Inc_Net_SWConv_SENet import SW_Res_Inc_Net_small as SW_Res_Inc_Net_small_SENet
+        model = SW_Res_Inc_Net_small_SENet(num_classes=num_classes, include_top=True)
+    elif model == 'SW_Res_Inc_Net_small_FCDA':
+        from model1113.Res_Inc_Net_SWConv_FCDA import SW_Res_Inc_Net_small as SW_Res_Inc_Net_small_FCDA
+        model = SW_Res_Inc_Net_small_FCDA(num_classes=num_classes, include_top=True)
+
+
     elif model == 'SW_Res_Inc_Net_base_ECANet':
         from newmodels.Res_Inc_Net_SWConv_ECANet import SW_Res_Inc_Net_base as SW_Res_Inc_Net_base_ECANet
         model = SW_Res_Inc_Net_base_ECANet(num_classes=num_classes, include_top=True)
@@ -200,11 +240,94 @@ def switch_model(model, device, num_classes):
     elif model == 'rf_att_medium':
         from newmodels.SpectraAtt_noProjected import rf_att_medium
         model = rf_att_medium(freq_bins=512, seq_len=128, num_classes=num_classes)
+    elif model == 'rf_att_medium_downsample':
+        from newmodels.SpectraAtt_noProjected_downsample import rf_att_medium
+        model = rf_att_medium(freq_bins=512, seq_len=128, num_classes=num_classes, stem_pool_factor=8)
+    elif model == 'rf_att_medium_downsample_16':
+        from newmodels.SpectraAtt_noProjected_downsample import rf_att_medium
+        model = rf_att_medium(freq_bins=512, seq_len=128, num_classes=num_classes, stem_pool_factor=16)
+    elif model == 'rf_att_tiny_downsample_32':
+        from newmodels.SpectraAtt_noProjected_downsample import rf_att_tiny
+        model = rf_att_tiny(freq_bins=512, seq_len=128, num_classes=num_classes)
+
+
     elif model == 'rf_att_large':
         from newmodels.SpectraAtt_noProjected import rf_att_large
         model = rf_att_large(freq_bins=512, seq_len=128, num_classes=num_classes)
 
+    elif model == 'rf_att_medium_Hybrid':
+        from newmodels.SpectraAtt_Hybrid import rf_att_medium as rf_att_medium_Hybrid
+        model = rf_att_medium_Hybrid(freq_bins=512, seq_len=128, num_classes=num_classes)
 
+
+
+    elif model == 'F_T':
+        from newmodels.Fcnn_Tatt import F_T
+        model = F_T(num_classes=num_classes)
+    elif model == 'rf_att_tiny':
+        from newmodels.T_att import rf_att_tiny
+        model = rf_att_tiny(freq_bins=512, seq_len=512, num_classes=10, include_top=True)
+
+
+# 1113
+    elif model == 'HAR_Net_tiny':
+        from model1113.HAR import HAR_Net_tiny
+        model = HAR_Net_tiny(num_classes=num_classes)
+    elif model == 'HAR_Net_small':
+        from model1113.HAR import HAR_Net_small
+        model = HAR_Net_small(num_classes=num_classes)
+    elif model == 'HAR_Net_base':
+        from model1113.HAR import HAR_Net_base
+        model = HAR_Net_base(num_classes=num_classes)
+
+    elif model == 'SpectralResolution_tiny':
+        from model1113.Spectral_Resolution_old import Res_Inc_Net_tiny
+        model = Res_Inc_Net_tiny(num_classes=num_classes)
+
+    elif model == 'SpectralResolution_small':
+        from model1113.Spectral_Resolution_old import Res_Inc_Net_small
+        model = Res_Inc_Net_small(num_classes=num_classes)
+
+    elif model == 'SpectralResolution_small_2_SE':
+        from model1113.Spectral_Resolution2_SE import Res_Inc_Net_small
+        model = Res_Inc_Net_small(num_classes=num_classes)
+
+    elif model == 'SpectralResolutionSE_small':
+        from model1113.Spectral_Resolution2_SE import Res_Inc_Net_small
+        model = Res_Inc_Net_small(num_classes=num_classes)
+
+
+# 1114
+    elif model == 'F_T_1114':
+        from model1113.Fcnn_Tatt import F_T
+        model = F_T(num_classes=num_classes)
+    elif model == 'F_T_1114_low_rank':
+        from model1115.Fcnn_Tatt import F_T
+        model = F_T(num_classes=num_classes)
+    elif model == 'F_T_1115_small2':
+        from model1115.Fcnn_Tatt import ResInc_SpAtt_Classifier
+        model = ResInc_SpAtt_Classifier(num_classes=num_classes)
+    elif model == 'F_T_1115_small2_multiloss':
+        from model1115.Fcnn_Tatt import ResInc_SpAtt_Classifier
+        model = ResInc_SpAtt_Classifier(num_classes=num_classes)
+    elif model == 'F_cnn_update':
+        from model1115.Spectral_Resolution_update import Res_Inc_Net_small
+        model = Res_Inc_Net_small(num_classes=num_classes)
+    elif model == 'F_T_gate':
+        from model1115.Fcnn_Tatt_gate import ResInc_SpAtt_Classifier
+        model = ResInc_SpAtt_Classifier(num_classes=num_classes)
+
+
+# 1115
+    elif model == 'Fcnn_tiny':
+        from model1115.Spectral_Resolution import Res_Inc_Net_tiny
+        model = Res_Inc_Net_tiny(num_classes=num_classes)
+    elif model == 'Tatt_tiny':
+        from model1115.T_att import rf_att_tiny
+        model = rf_att_tiny(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'F_T_tiny2':
+        from model1115.Fcnn_Tatt_gate import F_T
+        model = F_T(num_classes=num_classes)
 
     if device == 'cuda' and torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)# two GPUs

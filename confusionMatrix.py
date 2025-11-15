@@ -1,13 +1,13 @@
 import os
 import json
-
 import torch
-from torchvision import transforms, datasets
 import numpy as np
 from tqdm import tqdm
-# 延迟导入 matplotlib，避免在导入阶段触发 NumPy ABI 问题
 from prettytable import PrettyTable
 from datetime import datetime
+# 确保 matplotlib 在 plot 函数内部导入
+# import matplotlib
+# import matplotlib.pyplot as plt
 
 class ConfusionMatrix(object):
     """
@@ -22,9 +22,10 @@ class ConfusionMatrix(object):
 
     def update(self, preds, labels):
         for p, t in zip(preds, labels):
-            self.matrix[p, t] += 1
+            self.matrix[p, t] += 1  # 保持 [predicted, true]
 
     def summary(self):
+        # (此函数保持不变)
         # calculate accuracy
         sum_TP = 0
         for i in range(self.num_classes):
@@ -48,6 +49,9 @@ class ConfusionMatrix(object):
         return acc, table
 
     def plot(self, folder_path):
+        """
+        --- 这是修改后的 plot 函数 ---
+        """
         try:
             import matplotlib
             # 使用无界面后端，避免服务器/无显示环境问题
@@ -56,80 +60,73 @@ class ConfusionMatrix(object):
         except Exception as e:
             print(f"Matplotlib unavailable, skip confusion matrix plot: {e}")
             return
+            
         matrix = self.matrix
-        print(matrix)
-        plt.imshow(matrix, cmap=plt.cm.Blues)
+        print("Confusion Matrix (Raw Counts):\n", matrix)
 
-        # 设置x轴坐标label
-        plt.xticks(range(self.num_classes), self.labels, rotation=45)
-        # 设置y轴坐标label
-        plt.yticks(range(self.num_classes), self.labels)
-        # 显示colorbar
-        plt.colorbar()
-        plt.xlabel('True Labels')
-        plt.ylabel('Predicted Labels')
-        # plt.title(folder_path + ' Confusion matrix')
+        # --- 新增：创建更合适的图窗大小 ---
+        # 根据类别数量调整图窗大小，避免文本重叠
+        fig_size = max(8, self.num_classes * 0.8) 
+        fig, ax = plt.subplots(figsize=(fig_size, fig_size))
 
-        # 在图中标注数量/概率信息
-        thresh = matrix.max() / 2
-        for x in range(self.num_classes):
-            for y in range(self.num_classes):
-                # 注意这里的matrix[y, x]不是matrix[x, y]
-                info = int(matrix[y, x])
-                plt.text(x, y, info,
+        # --- 新增：对矩阵进行列归一化 (按 True Label) ---
+        # 这将显示“在所有真实标签为X的样本中，分别有多少百分比被预测为了Y”
+        sum_of_cols = matrix.sum(axis=0, keepdims=True)
+        # 使用 np.nan_to_num 避免除以0（如果某个类没有样本）
+        normalized_matrix = np.nan_to_num(matrix / sum_of_cols)
+
+        # --- 修改：使用归一化矩阵绘制热图 ---
+        # vmin=0, vmax=1 确保颜色范围在 0% 到 100% 之间
+        im = ax.imshow(normalized_matrix, cmap=plt.cm.Blues, vmin=0, vmax=1)
+
+        # 设置x轴坐标label (True Labels)
+        ax.set_xticks(range(self.num_classes))
+        ax.set_xticklabels(self.labels, rotation=45, ha="right") # 调整对齐
+        # 设置y轴坐标label (Predicted Labels)
+        ax.set_yticks(range(self.num_classes))
+        ax.set_yticklabels(self.labels)
+        
+        # --- 修改：为 Colorbar 添加标签 ---
+        cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label('Column-Normalized Frequency (Recall %)')
+
+        ax.set_xlabel('True Labels')
+        ax.set_ylabel('Predicted Labels')
+        # ax.set_title(folder_path + ' Confusion matrix') # 标题通常可以省略
+
+        # --- 修改：在图中标注“计数”和“百分比”信息 ---
+        # thresh = normalized_matrix.max() / 2 # 旧阈值
+        thresh = 0.5 # 固定阈值，0.5以上用白色，以下用黑色
+        
+        for x in range(self.num_classes): # x 对应 True Label (column)
+            for y in range(self.num_classes): # y 对应 Predicted Label (row)
+                
+                count = int(matrix[y, x])
+                
+                if count == 0:
+                    info = "0" # 如果计数为0，只显示0
+                else:
+                    # 获取归一化百分比
+                    percent = normalized_matrix[y, x] * 100
+                    # 格式化文本：原始计数 \n (百分比)
+                    info = f"{count}\n({percent:.1f}%)"
+                
+                # 根据背景色选择文字颜色
+                text_color = "white" if normalized_matrix[y, x] > thresh else "black"
+                
+                # --- 新增：突出对角线文本 ---
+                fontweight = "bold" if x == y else "normal"
+                
+                ax.text(x, y, info,
                          verticalalignment='center',
                          horizontalalignment='center',
-                         color="white" if info > thresh else "black")
-        plt.tight_layout()
-        plt.savefig(folder_path + '/' + 'Confusion matrix.png')
-        # plt.show()
+                         color=text_color,
+                         fontsize=8, # 缩小字号以适应单元格
+                         fontweight=fontweight) # 应用字体粗细
 
-
-# if __name__ == '__main__':
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # print(device)
-
-    # data_transform = transforms.Compose([transforms.Resize(256),
-    #                                      transforms.CenterCrop(224),
-    #                                      transforms.ToTensor(),
-    #                                      transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-
-    # # data_root = os.path.abspath(os.path.join(os.getcwd(), "../.."))  # get data root path
-    # # image_path = os.path.join(data_root, "data_set", "flower_data")  # flower data set path
-    # image_path = '/root/autodl-tmp/lzk/D00/data_set'
-    # assert os.path.exists(image_path), "data path {} does not exist.".format(image_path)
-
-    # validate_dataset = datasets.ImageFolder(root=os.path.join(image_path, "test"),
-    #                                         transform=data_transform)
-
-    # batch_size = 32
-    # class_num = 10
-    # validate_loader = torch.utils.data.DataLoader(validate_dataset,
-    #                                               batch_size=batch_size, shuffle=False,
-    #                                               num_workers=2)
-    # net = ResNet10(num_classes=class_num)
-    # # load pretrain weights
-    # model_weight_path = "/root/autodl-tmp/lzk/test/ANN_model_deep.pth"
-    # assert os.path.exists(model_weight_path), "cannot find {} file".format(model_weight_path)
-    # net.load_state_dict(torch.load(model_weight_path, map_location=device))
-    # net.to(device)
-
-    # # read class_indict
-    # json_label_path = './class_indices.json'
-    # assert os.path.exists(json_label_path), "cannot find {} file".format(json_label_path)
-    # json_file = open(json_label_path, 'r')
-    # class_indict = json.load(json_file)
-
-    # labels = [label for _, label in class_indict.items()]
-    # confusion = ConfusionMatrix(num_classes=class_num, labels=labels)
-    # net.eval()
-    # with torch.no_grad():
-    #     for val_data in tqdm(validate_loader):
-    #         val_images, val_labels = val_data
-    #         outputs = net(val_images.to(device))
-    #         outputs = torch.softmax(outputs, dim=1)
-    #         outputs = torch.argmax(outputs, dim=1)
-    #         confusion.update(outputs.to("cpu").numpy(), val_labels.to("cpu").numpy())
-    # confusion.plot()
-    # confusion.summary()
-
+        fig.tight_layout()
+        # 保存为新文件名，以区分
+        save_path = os.path.join(folder_path, 'Confusion_matrix_normalized.png')
+        fig.savefig(save_path)
+        print(f"Normalized confusion matrix saved to {save_path}")
+        plt.close(fig) # 关闭图窗，释放内存

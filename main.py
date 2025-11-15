@@ -27,6 +27,7 @@ from fun import folder_settings, switch_model
 from train_val_test_multiSNR import *
 # from train_val_test_MobileNet_ETF import *
 # from model.ResNet import ExtendedResNet
+from CAM import generate_cam_grid_from_loader
 
 def set_seed(seed: int):
     """Set random seeds for reproducibility before model initialization."""
@@ -58,6 +59,7 @@ def main():
     parser = argparse.ArgumentParser(description="Train a localization model")
     parser.add_argument('--epochs', type=int, default=250, help='Number of training epochs')
     parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
+    parser.add_argument('--weight_decay', type=float, default=1e-3, help='Weight decay for optimizer')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     # parser.add_argument('--runs', type=str, default='runs_Resnet10_model', help='Loss runing graph')
     # parser.add_argument('--Train', type=bool, default=True, help='Switch wheater to train')
@@ -66,11 +68,11 @@ def main():
     parser.add_argument('--TSNE', type=bool, default=False, help='The t-SNE Visualisation')
     parser.add_argument('--ratio', type=float, default=1, help='ratio')
 
-    parser.add_argument('--mode', type=str, default='Train', choices=['Train', 'Test'], help='switch mode')
-    parser.add_argument('--exp_name', type=str, default='Res_Inc_Net_base_SW', help='the name of the experiment')
+    parser.add_argument('--mode', type=str, default='Test', choices=['Train', 'Test'], help='switch mode')
+    parser.add_argument('--exp_name', type=str, default='F_T_1115_small2', help='the name of the experiment')
 
     parser.add_argument('--class_num', type=int, default=10, help='class number')
-    parser.add_argument('--model', type=str, default='Res_Inc_Net_base_SW', help='switch model')
+    parser.add_argument('--model', type=str, default='F_T_1115_small2', help='switch model')
     # parser.add_argument('--root_path', type=str, default='/root/autodl-tmp/data_set_5e6', help='dataset path')
     # parser.add_argument('--root_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6', help='dataset path')
     parser.add_argument('--root_path', type=str, default='/home/kk/D00/data_set_5e6', help='dataset path')
@@ -87,7 +89,7 @@ def main():
     # Set seeds BEFORE creating model/dataloaders so that parameter init is reproducible
     # set_seed(int(getattr(args, 'seed', 42)))
 
-    folder_path = './1108/' + args.exp_name
+    folder_path = './1115/' + args.exp_name
     if not os.path.exists(folder_path):# if the folder does not exist, than create it
         os.makedirs(folder_path)
 
@@ -112,7 +114,7 @@ def main():
     device, nw, table_data = folder_settings(args, folder_path)
 
     # Update the model to fit your input size and number of classes
-    model = switch_model(args.model, device, args.class_num)
+    model = switch_model(args.mode, args.model, device, args.class_num)
 
     if 'data_set' in args.root_path:
         train_loader, validate_loader, test_loader, target_classes = data_set_split(nw, args)
@@ -129,6 +131,10 @@ def main():
 
     if args.mode == 'Test':
         test(args, folder_path, model, device, test_loader, target_classes)
+
+        # target_layers = [model.att[-1]]
+        # target_layers = [model.att]
+        # generate_cam_grid_from_loader(args, folder_path, model, device, test_loader, target_classes, target_layers)
 
 
     if args.TSNE:
