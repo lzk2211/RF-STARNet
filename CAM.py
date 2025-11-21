@@ -65,8 +65,8 @@ class GradCAM:
         gradients = self.gradients
         activations = self.activations
         
-        gradients = gradients.unsqueeze(0)######
-        activations = activations.unsqueeze(0)######
+        # gradients = gradients.unsqueeze(0)######
+        # activations = activations.unsqueeze(0)######
 
         b, k, *dims = gradients.size()
 
@@ -77,7 +77,7 @@ class GradCAM:
         weights = alpha.view(b, k, *([1]*len(dims)))
         cam = (weights * activations).sum(1, keepdim=True) # (B, 1, ...)
 
-        cam = cam.permute(0, 1, 3, 2)########
+        # cam = cam.permute(0, 1, 3, 2)########
         # ReLU
         cam = F.relu(cam)
 
@@ -160,6 +160,34 @@ def get_specific_sample(test_loader, target_classes, target_snr, target_class_na
     print("[WARN] 未找到符合条件的样本。")
     return None, None
 
+def list_samples_for_class_snr(test_loader, target_classes, target_snr, target_class_name):
+    """
+    返回符合 (类别, SNR) 条件的所有样本索引与文件名列表。
+    """
+    dataset = test_loader.dataset
+    try:
+        target_label_idx = target_classes.index(target_class_name)
+    except ValueError:
+        return []
+    matched = []
+    for i in range(len(dataset)):
+        img, label, snr = dataset[i]
+        if isinstance(label, torch.Tensor):
+            label = label.item()
+        if label == target_label_idx and str(target_snr) in str(snr):
+            path = getattr(dataset, 'file_paths', None)
+            if path is not None:
+                matched.append((i, dataset.file_paths[i]))
+            else:
+                matched.append((i, f"index_{i}"))
+    return matched
+
+def load_sample_by_index(dataset, index):
+    img, label, snr = dataset[index]
+    if isinstance(label, torch.Tensor):
+        label = label.item()
+    return img.unsqueeze(0), label, snr
+
 def run_cam_visualization(args, 
                           target_snr='0dB', 
                           target_class_name=None, 
@@ -188,11 +216,37 @@ def run_cam_visualization(args,
         target_class_name = target_classes[0]
         
     # 3. 获取特定样本
-    img_tensor, label_idx = get_specific_sample(test_loader, target_classes, target_snr, target_class_name)
-    
-    if img_tensor is None:
+    samples = list_samples_for_class_snr(test_loader, target_classes, target_snr, target_class_name)
+    if not samples:
+        print(f"[WARN] 没有找到类别 {target_class_name} 且 SNR={target_snr} 的样本，退出。")
         return
-
+    print(f"[INFO] 共找到 {len(samples)} 个匹配样本，可供选择：")
+    for idx, (sample_index, file_path) in enumerate(samples):
+        print(f"  [{idx}] dataset_index={sample_index} file='{os.path.basename(file_path)}'")
+    print("请输入你要选择的图片：可以输入上面显示的序号或文件名 (回车默认 0)：", end="", flush=True)
+    user_in = sys.stdin.readline().strip()
+    chosen = None
+    if user_in == "":
+        chosen = samples[0]
+    else:
+        # 优先当成序号
+        if user_in.isdigit():
+            ui = int(user_in)
+            if 0 <= ui < len(samples):
+                chosen = samples[ui]
+        if chosen is None:
+            # 作为文件名匹配
+            for _, (sample_index, file_path) in enumerate(samples):
+                if os.path.basename(file_path) == user_in:
+                    chosen = (sample_index, file_path)
+                    break
+    if chosen is None:
+        print("[WARN] 输入无效，使用第一个样本。")
+        chosen = samples[0]
+    sample_index, file_path = chosen
+    print(f"[INFO] 已选择样本 dataset_index={sample_index} file='{os.path.basename(file_path)}'")
+    dataset = test_loader.dataset
+    img_tensor, label_idx, _ = load_sample_by_index(dataset, sample_index)
     img_tensor = img_tensor.to(device)
     
     # 4. 加载模型
@@ -201,7 +255,7 @@ def run_cam_visualization(args,
     
     
     # 加载权重
-    model_path = os.path.join('./1117', args.exp_name, 'model.pth')
+    model_path = os.path.join('./1119', args.exp_name, 'model.pth')
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path, map_location=device))
         print(f"[INFO] 成功加载权重: {model_path}")
@@ -219,8 +273,8 @@ def run_cam_visualization(args,
         # 尝试定位到 res_backbone 的最后一层
         # 假设 F_cnn 结构中有 layer4 或 block
         if hasattr(model.res_backbone, 'layer4'):
-            #  target_layer = model.res_backbone.layer4[-1]
-             target_layer = model.spectra_att.att.layer_norm
+             target_layer = model.res_backbone.layer4[-1]
+            #  target_layer = model.spectra_att.att.layer_norm
         else:
              # 如果没有 layer4，取 children 的最后一个
              target_layer = list(model.res_backbone.children())[-1]
@@ -299,8 +353,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_path', type=str, default='/home/kk/D00/data_set_5e6', help='dataset path')
-    parser.add_argument('--exp_name', type=str, default='F_T_mini2_gate_mulitloss_ortho_nozero', help='exp name for finding model path')
-    parser.add_argument('--model', type=str, default='F_T_mini2_gate_mulitloss_ortho_nozero')
+    parser.add_argument('--exp_name', type=str, default='F_T_small_gate_mulitloss_1119', help='exp name for finding model path')
+    parser.add_argument('--model', type=str, default='F_T_small_gate_mulitloss_1119')
     parser.add_argument('--class_num', type=int, default=10)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--batch_size', type=int, default=16) # 仅用于 loader 初始化，不影响 cam
