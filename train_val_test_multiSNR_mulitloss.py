@@ -95,6 +95,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         train_loss = 0
         train_loss_res = 0
         train_loss_sp = 0
+        train_loss_ortho = 0
 
         train_bar = tqdm(train_loader, file=sys.stdout)
         # Track training accuracy
@@ -137,6 +138,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
             train_loss += loss.item()
             train_loss_res += loss_res.item()
             train_loss_sp += loss_sp.item()
+            train_loss_ortho += loss_ortho.item()
 
             # accuracy
             _, preds = torch.max(main, dim=1)
@@ -162,6 +164,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         model.eval()
         val_acc = 0
         all_outputs = []
+        all_CKA = []
         all_labels = []
         snrs = []
         # val_steps = len(validate_loader)
@@ -174,10 +177,11 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
                 freq_seq = freq_seq.to(device)
                 val_labels = val_labels.to(device)
 
-                main = model(freq_seq)
+                main, CKA = model(freq_seq)
                 # outputs = model(torch.real(freq_seq), torch.imag(freq_seq))
 
                 all_outputs.append(main.cpu())
+                all_CKA.append(CKA)
                 all_labels.append(val_labels.cpu())
                 snrs.extend(snr)
 
@@ -192,13 +196,14 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         batch_acc = correct.sum().item()
         val_acc = batch_acc
         val_accurate = val_acc / len(validate_loader.dataset)
+        CKA = sum(all_CKA) / len(all_CKA)
 
         for i, corr in enumerate(correct):
             snr_datas[snrs[i]] += 1 if corr.item() == 1 else 0
         for key, value in snr_datas.items():
             snr_datas[key] = value / snrs.count(key)
         
-        summary = f"Epoch {epoch+1:3d}/{args.epochs} | Train: {train_loss:.4f} | Train Acc: {train_accuracy:.4f} | Val Acc: {val_accurate:.4f} | -20dB: {snr_datas['-20dB']:.4f} | -15dB: {snr_datas['-15dB']:.4f} | -10dB: {snr_datas['-10dB']:.4f} | -5dB: {snr_datas['-5dB']:.4f} | 0dB: {snr_datas['0dB']:.4f} | 5dB: {snr_datas['5dB']:.4f} | pure: {snr_datas['pure']:.4f} | LR: {current_lr:.6f}"
+        summary = f"Epoch {epoch+1:3d}/{args.epochs} | Train: {train_loss:.4f} | Train Acc: {train_accuracy:.4f} | Val Acc: {val_accurate:.4f} | -20dB: {snr_datas['-20dB']:.4f} | -15dB: {snr_datas['-15dB']:.4f} | -10dB: {snr_datas['-10dB']:.4f} | -5dB: {snr_datas['-5dB']:.4f} | 0dB: {snr_datas['0dB']:.4f} | 5dB: {snr_datas['5dB']:.4f} | pure: {snr_datas['pure']:.4f} | LR: {current_lr:.6f} | "
         print(summary)
 
         if val_acc > best_acc:
@@ -208,10 +213,12 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
             torch.save(model.state_dict(), save_path)
 
         writer.add_scalar('Loss/train', train_loss, epoch)
-        writer.add_scalar('Loss_res/train', train_loss_res, epoch)
-        writer.add_scalar('Loss_sp/train', train_loss_sp, epoch)
+        writer.add_scalar('Loss/train_res', train_loss_res, epoch)
+        writer.add_scalar('Loss/train_sp', train_loss_sp, epoch)
+        writer.add_scalar('Loss/train_ortho', train_loss_ortho, epoch)
         writer.add_scalar('Acc/train', train_accuracy, epoch)
         writer.add_scalar('Acc/val', val_accurate, epoch)
+        writer.add_scalar('CKA/val', CKA, epoch)
 
         if True:# 按键Q回车提前退出
             if system == 1 and msvcrt.kbhit():  # 检查是否有键盘输入
@@ -248,6 +255,7 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     
     all_outputs = []
     all_labels = []
+    all_CKA = []
     
     # NEW: 创建一个字典来按SNR存储预测和标签
     # 结构: {'-20dB': {'preds': [...], 'labels': [...]}, '-15dB': ...}
@@ -270,7 +278,7 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             freq_seq = freq_seq.to(device)
             test_labels = test_labels.to(device)
 
-            main = model(freq_seq)
+            main, CKA = model(freq_seq)
             outputs_softmax = torch.softmax(main, dim=1)
             outputs_argmax = torch.argmax(outputs_softmax, dim=1)
             
@@ -287,6 +295,7 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             confusion.update(batch_preds, batch_labels)
             all_outputs.append(main.cpu())
             all_labels.append(test_labels.cpu())
+            all_CKA.append(CKA)
 
             # 可选：记录每 batch 用时（不做逐条打印，避免刷屏）
             _ = time.time() - iter_start
@@ -304,9 +313,17 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     # (这部分保持不变，用于计算总体混淆矩阵和总准确率)
     all_outputs = torch.cat(all_outputs, dim=0)
     all_labels = torch.cat(all_labels, dim=0)
+    CKA = sum(all_CKA) / len(all_CKA)
     _, predicted = torch.max(all_outputs, dim=1)
     correct = (predicted == all_labels).float()
     batch_acc = correct.sum().item()
+    # Overall precision/recall/F1 (macro average)
+    overall_precision, overall_recall, overall_f1, _ = precision_recall_fscore_support(
+        all_labels.cpu().numpy(),
+        predicted.cpu().numpy(),
+        average='macro',
+        zero_division=0
+    )
 
     confusion.plot(folder_path)
     acc, table = confusion.summary()
@@ -325,6 +342,7 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     avg_ms_per_sample = (total_infer_sec / total_samples * 1000.0) if total_samples > 0 else 0.0
     print(f"[Test] Inference time: {total_infer_sec:.3f}s | {avg_ms_per_sample:.3f} ms/sample | Throughput: {samples_per_sec:.2f} samples/s")
     print(f"[Test] GPU memory: current {mem_mb:.1f} MB | peak {peak_mb:.1f} MB | GPU-hours: {gpu_hours:.4f} h | samples/GPU-hour: {samples_per_gpu_hour:.1f}")
+    print(f"[Test] Average CKA between features: {CKA:.4f}")
 
     # --- NEW: 按SNR计算详细指标 (替换您原有的 snr_datas 循环) ---
     
@@ -383,32 +401,68 @@ def test(args, folder_path, model, device, test_loader, target_classes):
 
     print("--- End of Summary ---")
 
-    # --- (这部分使用新的 snr_accuracy_data，保持您原有的输出格式) ---
-    
-    # MATLAB-friendly one-liners for easy copy
+    # MATLAB-friendly strings
     values_acc = ', '.join(f"{snr_accuracy_data[k]:.4f}" for k in snr_levels)
     values_prec = ', '.join(f"{snr_precision_data[k]:.4f}" for k in snr_levels)
     values_rec = ', '.join(f"{snr_recall_data[k]:.4f}" for k in snr_levels)
     values_f1 = ', '.join(f"{snr_f1_data[k]:.4f}" for k in snr_levels)
 
-    # 计算模型的 FLOPs 和参数量（放在结构体输出前，以便一起打印）
-    inputs = torch.randn(1, 1, 512, 512).to(device)
-    flops, params = profile(model, (inputs,), verbose=False)
-    flops_int = int(flops)  # 转为整数更便于 MATLAB 处理
+    # --- 计算 FLOPs 和 Params ---
+    # 注意：这里假设输入尺寸为 (1, 1, 512, 512)，如果您的模型输入是 (1, 2, 1024) 等其他形状，请修改此处
+    try:
+        # 尝试获取一个真实的 batch 来确定输入维度，更稳健
+        dummy_input = next(iter(test_loader))[0][0:1].to(device)
+    except:
+        # 如果失败则使用默认形状
+        dummy_input = torch.randn(1, 1, 512, 512).to(device)
+
+    flops, params = profile(model, (dummy_input,), verbose=False)
+    flops_int = int(flops)
     params_int = int(params)
 
-    # MATLAB struct-style dictionary for easy paste (加入 flops/params & 推理统计)
+    # --- 计算平均单样本显存占用 ---
+    # 显存占用是按 Batch 分配的，所以单样本显存 = 峰值显存 / Batch Size
+    current_batch_size = test_loader.batch_size
+    mem_per_sample_MB = peak_mb / current_batch_size if current_batch_size > 0 else 0.0
+
+    # --- 构造最终输出字典字符串 ---
+    # 完全匹配您要求的格式
+    # metrics_struct = (
+    #     f"{args.model}_metrics = {{"
+    #     f"'avg_acc': {test_accurate:.4f}, 'avg_precision': {overall_precision:.4f}, "
+    #     f"'avg_recall': {overall_recall:.4f}, 'avg_f1': {overall_f1:.4f}, "
+    #     f"'acc': [{values_acc}], 'precision': [{values_prec}], "
+    #     f"'recall': [{values_rec}], 'f1': [{values_f1}], "
+    #     f"'flops': {flops_int}, 'params': {params_int}, "
+    #     f"'infer_sec': {total_infer_sec:.6f}, "
+    #     # f"'infer_mem_MB': {mem_mb:.2f}, "         # 当前显存
+    #     # f"'infer_peak_MB': {peak_mb:.2f}, "       # 峰值显存 (Batch级别)
+    #     f"'mem_per_sample_MB': {mem_per_sample_MB:.4f}, " # 平均单样本显存
+    #     f"'samples_per_sec': {samples_per_sec:.4f}}}"
+    #     # f"'gpu_hours': {gpu_hours:.6f}, "
+    #     # f"'samples_per_gpu_hour': {samples_per_gpu_hour:.2f}}}"
+    # )
+
     metrics_struct = (
-        f"{args.model}_metrics = {{'acc': [{values_acc}], 'precision': [{values_prec}], "
-        f"'recall': [{values_rec}], 'f1': [{values_f1}], 'flops': {flops_int}, 'params': {params_int}, "
-        f"'infer_mem_MB': {mem_mb:.2f}, 'infer_peak_MB': {peak_mb:.2f}, "
-        f"'samples_per_sec': {samples_per_sec:.4f}, 'gpu_hours': {gpu_hours:.6f}, 'samples_per_gpu_hour': {samples_per_gpu_hour:.2f}}}"
+        f"'{args.model}_metrics': {{"
+        f"'avg_acc': {test_accurate:.4f}, 'avg_precision': {overall_precision:.4f}, "
+        f"'avg_recall': {overall_recall:.4f}, 'avg_f1': {overall_f1:.4f}, "
+        f"'acc': [{values_acc}], "
+        f"'precision': [{values_prec}], "
+        f"'recall': [{values_rec}], "
+        f"'f1': [{values_f1}], "
+        f"'flops': {flops_int}, 'params': {params_int}, "
+        f"'gpu_infer_sec': {total_infer_sec:.6f}, "  # 将之前的 infer_sec 改名为 gpu_infer_sec
+        f"'mem_per_sample_MB': {mem_per_sample_MB:.4f}, "
+        f"'samples_per_sec': {samples_per_sec:.4f}, "
+        f"}}"
     )
+
+
+    print("\n" + "="*20 + " Final Metrics for Copying " + "="*20)
     print(metrics_struct)
-    print(f"(model complexity) flops={flops_int}, params={params_int}")
+    print("="*65)
 
-    # precision, recall, f1, macro_ap, micro_ap = plot_curve(args, predicted, all_labels, folder_path)
+    # model_name_metrics = {'acc': [...], ...} 这一行可以直接复制到 Python 或 MATLAB 中使用
 
-
-    return test_accurate#, precision, recall, f1, macro_ap, micro_ap
-
+    return test_accurate

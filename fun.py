@@ -82,7 +82,7 @@ def folder_settings(args, folder_path):
     print(tabulate(table_data, headers=["Parameter", "Value"], tablefmt="grid"))
     return device, nw, table_data
 
-def switch_model(mode, model, device, num_classes):
+def switch_model(model, device, num_classes):
     # Update the model to fit your input size and number of classes
     if model == 'resnet34':
         model = resnet34(num_classes=num_classes)
@@ -326,8 +326,251 @@ def switch_model(mode, model, device, num_classes):
         from model1115.T_att import rf_att_tiny
         model = rf_att_tiny(freq_bins=512, seq_len=512, num_classes=num_classes)
     elif model == 'F_T_tiny2':
+        from model1117.Fcnn_Tatt_gate import F_T
+        model = F_T(num_classes=num_classes)
+    elif model == 'F_T_mini2':#其实是tiny
         from model1115.Fcnn_Tatt_gate import F_T
         model = F_T(num_classes=num_classes)
+
+    elif model == 'F_T_mini2_1117':
+        from model1117.Fcnn_Tatt_gate import F_T
+        model = F_T(num_classes=num_classes)
+    elif model == 'F_T_mini2_1117_nogate':
+        from model1117.Fcnn_Tatt import F_T
+        model = F_T(num_classes=num_classes)
+    elif model == 'F_T_mini2_1117_gate':
+        from model1117.Fcnn_Tatt_gate import F_T
+        model = F_T(num_classes=num_classes)
+    elif model == 'F_T_mini2_1117_gate':
+        from model1117.Fcnn_Tatt_gate import F_T
+        model = F_T(num_classes=num_classes)
+    elif model == 'T_att_tiny':
+        from model1117.T_att import T_att_tiny
+        model = T_att_tiny(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_tiny_nozero':
+        from model1117.T_att import T_att_tiny
+        model = T_att_tiny(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_medium_nozero':
+        from model1117.T_att import T_att_medium
+        model = T_att_medium(freq_bins=512, seq_len=512, num_classes=num_classes)
+
+    elif model == 'F_cnn_tiny':
+        from model1117.F_cnn import F_cnn_tiny
+        model = F_cnn_tiny(num_classes=num_classes)
+    elif model == 'T_att_mini':
+        from model1117.T_att import T_att_mini
+        model = T_att_mini(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'F_cnn_mini':
+        from model1117.F_cnn import F_cnn_mini
+        model = F_cnn_mini(num_classes=num_classes)
+
+    elif model == 'F_T_mini2_gate_mulitloss':
+        from model1117.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='mini')
+    elif model == 'F_T_mini2_gate_mulitloss_ortho':
+        from model1117.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='mini')
+    elif model == 'F_T_mini2_gate_mulitloss_ortho_nozero':
+        from model1117.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='mini')
+    elif model == 'F_T_mini2_gate_mulitloss_ortho_DA':
+        from model1117.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='mini')
+    elif model == 'F_T_nano2_gate_mulitloss':
+        from model1117.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='nano')
+
+    elif model == 'S3RImageNet_TinyTransformer':
+        from model1115.yll import S3RImageNet_TinyTransformer
+        model = S3RImageNet_TinyTransformer(num_classes=num_classes)
+    elif model == 'Fcnn_noisegate_tiny':
+        from model1115.Spectral_Resolution_noise_gate import Res_Inc_Net_tiny
+        model = Res_Inc_Net_tiny(num_classes=num_classes)
+    elif model == 'S3R_1D_TinyTransformer':
+        from model1115.S3R_light import S3R_1D_TinyTransformer
+        model = S3R_1D_TinyTransformer(num_classes=num_classes)
+
+    elif model == 'SpectralAtt':
+        from model1115.Spectral_selfatt import SpectralAttentionNet
+        model = SpectralAttentionNet(num_classes=num_classes)
+    elif model == 'SpectralAtt2':
+        from model1115.Spectral_selfatt2 import Res_Inc_Net_tiny
+        model = Res_Inc_Net_tiny(num_classes=num_classes)
+    elif model == 'SpectralAtt2_base':
+        from model1115.Spectral_selfatt2 import Res_Inc_Net_base
+        model = Res_Inc_Net_base(num_classes=num_classes)
+
+# 1119
+    elif model == 'F_cnn_nano_1119':
+        from model1119.F_cnn import F_cnn_nano
+        model = F_cnn_nano(num_classes=num_classes)
+    elif model == 'F_cnn_mini_1119':
+        from model1119.F_cnn import F_cnn_mini
+        model = F_cnn_mini(num_classes=num_classes)
+    elif model == 'F_cnn_tiny_1119':
+        from model1119.F_cnn import F_cnn_tiny
+        model = F_cnn_tiny(num_classes=num_classes)
+    elif model == 'F_cnn_small_1119':
+        from model1119.F_cnn import F_cnn_small
+        model = F_cnn_small(num_classes=num_classes)
+    elif model == 'F_cnn_base_1119':
+        from model1119.F_cnn import F_cnn_base
+        model = F_cnn_base(num_classes=num_classes)
+    elif model == 'F_cnn_large_1119':
+        from model1119.F_cnn import F_cnn_large
+        model = F_cnn_large(num_classes=num_classes)
+
+    ###############################
+    elif model == 'T_att_nano_1119':
+        from model1119.T_att import T_att_nano
+        model = T_att_nano(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_mini_1119':
+        from model1119.T_att import T_att_mini
+        model = T_att_mini(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_tiny_1119':
+        from model1119.T_att import T_att_tiny
+        model = T_att_tiny(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_small_1119':
+        from model1119.T_att import T_att_small
+        model = T_att_small(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_base_1119':
+        from model1119.T_att import T_att_base
+        model = T_att_base(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_large_1119':
+        from model1119.T_att import T_att_large
+        model = T_att_large(freq_bins=512, seq_len=512, num_classes=num_classes)
+    ###############################
+    elif model == 'F_T_nano_gate_mulitloss_1119':
+        from model1119.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='nano')
+    elif model == 'F_T_mini_gate_mulitloss_1119':
+        from model1119.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='mini')
+    elif model == 'F_T_tiny_gate_mulitloss_1119':
+        from model1119.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='tiny')
+    elif model == 'F_T_small_gate_mulitloss_1119':
+        from model1119.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='small')
+    elif model == 'F_T_base_gate_mulitloss_1119':
+        from model1119.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='base')
+    elif model == 'F_T_large_gate_mulitloss_1119':
+        from model1119.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='large')
+    ###############################
+
+
+    # 对照
+    elif model == 'F_cnn_basic_tiny_1120':
+        from model1119.F_cnn_basic import Res_Inc_Net_tiny
+        model = Res_Inc_Net_tiny(num_classes=num_classes)
+    elif model == 'F_cnn_basic_base_1120':
+        from model1119.F_cnn_basic import Res_Inc_Net_base
+        model = Res_Inc_Net_base(num_classes=num_classes)
+    elif model == 'F_cnn_SE_tiny_1122':
+        from model1122.F_cnn_SE import Res_Inc_Net_tiny
+        model = Res_Inc_Net_tiny(num_classes=num_classes)
+    elif model == 'F_cnn_SE_base_1122':
+        from model1122.F_cnn_SE import Res_Inc_Net_base
+        model = Res_Inc_Net_base(num_classes=num_classes)
+    elif model == 'F_cnn_MultiDilation_tiny_1120':
+        from model1119.F_cnn_MultiDilation import Res_Inc_Net_tiny
+        model = Res_Inc_Net_tiny(num_classes=num_classes)
+    elif model == 'F_cnn_MultiDilation_base_1120':
+        from model1119.F_cnn_MultiDilation import Res_Inc_Net_base
+        model = Res_Inc_Net_base(num_classes=num_classes)
+    # 对照
+    elif model == 'T_att_large_nogroup':
+        from model1119.T_att_nogroup import T_att_large
+        model = T_att_large(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_base_nogroup':
+        from model1119.T_att_nogroup import T_att_base
+        model = T_att_base(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_large_nostem':
+        from model1119.T_att_nostem import T_att_large
+        model = T_att_large(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_base_nostem':
+        from model1119.T_att_nostem import T_att_base
+        model = T_att_base(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_large_basic':
+        from model1119.T_att_basic import T_att_large
+        model = T_att_large(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_base_basic':
+        from model1119.T_att_basic import T_att_base
+        model = T_att_base(freq_bins=512, seq_len=512, num_classes=num_classes)
+    # 对照
+    elif model == 'F_T_small_basic':
+        from model1119.Fcnn_Tatt import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='small')
+    elif model == 'F_T_tiny_basic':
+        from model1119.Fcnn_Tatt import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='tiny')
+    elif model == 'F_T_small_gate':
+        from model1119.Fcnn_Tatt_gate import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='small')
+    elif model == 'F_T_tiny_gate':
+        from model1119.Fcnn_Tatt_gate import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='tiny')
+
+
+    elif model == 'ASA_RFFI_Net':
+        from model1119.ASA_RFFI_Model import ASA_RFFI_Net
+        model = ASA_RFFI_Net(num_classes=num_classes)
+    elif model == 'resnet18_vector_group':
+        from model1119.ResNet_vector_group import resnet18_vector_group
+        model = resnet18_vector_group(num_classes=num_classes)
+
+# 1122
+    elif model == 'F_T_small_mulitloss_1122':
+        from model1122.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='small')
+    elif model == 'F_T_tiny_mulitloss_1122':
+        from model1122.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='tiny')
+    elif model == 'F_T_mini_mulitloss_1122':
+        from model1122.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='mini')
+    elif model == 'F_T_nano_mulitloss_1122':
+        from model1122.Fcnn_Tatt_gate_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='nano')
+
+    elif model == 'F_cnn_bn_nano_1122':
+        from model1122.F_cnn_bn import F_cnn_nano
+        model = F_cnn_nano(num_classes=num_classes)
+    elif model == 'F_cnn_bn_mini_1122':
+        from model1122.F_cnn_bn import F_cnn_mini
+        model = F_cnn_mini(num_classes=num_classes)
+    elif model == 'F_cnn_bn_tiny_1122':
+        from model1122.F_cnn_bn import F_cnn_tiny
+        model = F_cnn_tiny(num_classes=num_classes)
+    elif model == 'F_cnn_bn_small_1122':
+        from model1122.F_cnn_bn import F_cnn_small
+        model = F_cnn_small(num_classes=num_classes)
+    elif model == 'F_cnn_bn_base_1122':
+        from model1122.F_cnn_bn import F_cnn_base
+        model = F_cnn_base(num_classes=num_classes)
+
+    elif model == 'T_att_nano_1122':
+        from model1122.T_att import T_att_nano
+        model = T_att_nano(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_mini_1122':
+        from model1122.T_att import T_att_mini
+        model = T_att_mini(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_tiny_1122':
+        from model1122.T_att import T_att_tiny
+        model = T_att_tiny(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_small_1122':
+        from model1122.T_att import T_att_small
+        model = T_att_small(freq_bins=512, seq_len=512, num_classes=num_classes)
+    elif model == 'T_att_base_1122':
+        from model1122.T_att import T_att_base
+        model = T_att_base(freq_bins=512, seq_len=512, num_classes=num_classes)
+
+    elif model == 'F_T_small_mulitloss_1127':
+        from model1122.Fcnn_Tatt_mulitloss import F_T
+        model = F_T(num_classes=num_classes, use_resinc_variant='small')
+
 
     if device == 'cuda' and torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)# two GPUs

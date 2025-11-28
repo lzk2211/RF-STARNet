@@ -66,6 +66,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
 
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+    # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=0)
 
     best_acc = 0.0
     save_path = folder_path + '/model.pth'
@@ -274,6 +275,14 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     correct = (predicted == all_labels).float()
     batch_acc = correct.sum().item()
 
+    # Overall precision/recall/F1 (macro average)
+    overall_precision, overall_recall, overall_f1, _ = precision_recall_fscore_support(
+        all_labels.cpu().numpy(),
+        predicted.cpu().numpy(),
+        average='macro',
+        zero_division=0
+    )
+    
     confusion.plot(folder_path)
     acc, table = confusion.summary()
 
@@ -351,30 +360,67 @@ def test(args, folder_path, model, device, test_loader, target_classes):
 
     # --- (这部分使用新的 snr_accuracy_data，保持您原有的输出格式) ---
     
-    # MATLAB-friendly one-liners for easy copy
+    # MATLAB-friendly strings
     values_acc = ', '.join(f"{snr_accuracy_data[k]:.4f}" for k in snr_levels)
     values_prec = ', '.join(f"{snr_precision_data[k]:.4f}" for k in snr_levels)
     values_rec = ', '.join(f"{snr_recall_data[k]:.4f}" for k in snr_levels)
     values_f1 = ', '.join(f"{snr_f1_data[k]:.4f}" for k in snr_levels)
 
-    # 计算模型的 FLOPs 和参数量（放在结构体输出前，以便一起打印）
-    inputs = torch.randn(1, 1, 512, 512).to(device)
-    flops, params = profile(model, (inputs,), verbose=False)
-    flops_int = int(flops)  # 转为整数更便于 MATLAB 处理
+    # --- 计算 FLOPs 和 Params ---
+    # 注意：这里假设输入尺寸为 (1, 1, 512, 512)，如果您的模型输入是 (1, 2, 1024) 等其他形状，请修改此处
+    try:
+        # 尝试获取一个真实的 batch 来确定输入维度，更稳健
+        dummy_input = next(iter(test_loader))[0][0:1].to(device)
+    except:
+        # 如果失败则使用默认形状
+        dummy_input = torch.randn(1, 1, 512, 512).to(device)
+
+    flops, params = profile(model, (dummy_input,), verbose=False)
+    flops_int = int(flops)
     params_int = int(params)
 
-    # MATLAB struct-style dictionary for easy paste (加入 flops/params & 推理统计)
+    # --- 计算平均单样本显存占用 ---
+    # 显存占用是按 Batch 分配的，所以单样本显存 = 峰值显存 / Batch Size
+    current_batch_size = test_loader.batch_size
+    mem_per_sample_MB = peak_mb / current_batch_size if current_batch_size > 0 else 0.0
+
+    # --- 构造最终输出字典字符串 ---
+    # 完全匹配您要求的格式
+    # metrics_struct = (
+    #     f"{args.model}_metrics = {{"
+    #     f"'avg_acc': {test_accurate:.4f}, 'avg_precision': {overall_precision:.4f}, "
+    #     f"'avg_recall': {overall_recall:.4f}, 'avg_f1': {overall_f1:.4f}, "
+    #     f"'acc': [{values_acc}], 'precision': [{values_prec}], "
+    #     f"'recall': [{values_rec}], 'f1': [{values_f1}], "
+    #     f"'flops': {flops_int}, 'params': {params_int}, "
+    #     f"'infer_sec': {total_infer_sec:.6f}, "
+    #     # f"'infer_mem_MB': {mem_mb:.2f}, "         # 当前显存
+    #     # f"'infer_peak_MB': {peak_mb:.2f}, "       # 峰值显存 (Batch级别)
+    #     f"'mem_per_sample_MB': {mem_per_sample_MB:.4f}, " # 平均单样本显存
+    #     f"'samples_per_sec': {samples_per_sec:.4f}}}"
+    #     # f"'gpu_hours': {gpu_hours:.6f}, "
+    #     # f"'samples_per_gpu_hour': {samples_per_gpu_hour:.2f}}}"
+    # )
+
     metrics_struct = (
-        f"{args.model}_metrics = {{'acc': [{values_acc}], 'precision': [{values_prec}], "
-        f"'recall': [{values_rec}], 'f1': [{values_f1}], 'flops': {flops_int}, 'params': {params_int}, "
-        f"'infer_sec': {total_infer_sec:.6f}, 'infer_mem_MB': {mem_mb:.2f}, 'infer_peak_MB': {peak_mb:.2f}, "
-        f"'samples_per_sec': {samples_per_sec:.4f}, 'gpu_hours': {gpu_hours:.6f}, 'samples_per_gpu_hour': {samples_per_gpu_hour:.2f}}}"
+        f"'{args.model}_metrics': {{"
+        f"'avg_acc': {test_accurate:.4f}, 'avg_precision': {overall_precision:.4f}, "
+        f"'avg_recall': {overall_recall:.4f}, 'avg_f1': {overall_f1:.4f}, "
+        f"'acc': [{values_acc}], "
+        f"'precision': [{values_prec}], "
+        f"'recall': [{values_rec}], "
+        f"'f1': [{values_f1}], "
+        f"'flops': {flops_int}, 'params': {params_int}, "
+        f"'gpu_infer_sec': {total_infer_sec:.6f}, "  # 将之前的 infer_sec 改名为 gpu_infer_sec
+        f"'mem_per_sample_MB': {mem_per_sample_MB:.4f}, "
+        f"'samples_per_sec': {samples_per_sec:.4f}, "
+        f"}}"
     )
+
+    print("\n" + "="*20 + " Final Metrics for Copying " + "="*20)
     print(metrics_struct)
-    print(f"(model complexity) flops={flops_int}, params={params_int}")
+    print("="*65)
 
-    # precision, recall, f1, macro_ap, micro_ap = plot_curve(args, predicted, all_labels, folder_path)
+    # model_name_metrics = {'acc': [...], ...} 这一行可以直接复制到 Python 或 MATLAB 中使用
 
-
-    return test_accurate#, precision, recall, f1, macro_ap, micro_ap
-
+    return test_accurate
