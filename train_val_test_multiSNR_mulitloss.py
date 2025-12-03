@@ -25,6 +25,7 @@ from collections import defaultdict  # NEW: 用于构建嵌套字典
 from sklearn.metrics import precision_recall_fscore_support  # NEW: 导入计算指标的工具
 
 from DA import *
+from branch_stats import init_branch_results, update_branch_results, plot_branch_venn  # NEW: 分支统计模块
 
 def normalize(matrix):
     # 假设输入矩阵的形状为 (batch_size, height, width)
@@ -177,7 +178,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
                 freq_seq = freq_seq.to(device)
                 val_labels = val_labels.to(device)
 
-                main, CKA = model(freq_seq)
+                main, CKA, _, _ = model(freq_seq)
                 # outputs = model(torch.real(freq_seq), torch.imag(freq_seq))
 
                 all_outputs.append(main.cpu())
@@ -254,12 +255,21 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     model.eval()
     
     all_outputs = []
+    all_outputs_res = []  # NEW: 收集logits_res
+    all_outputs_sp = []   # NEW: 收集logits_sp
     all_labels = []
     all_CKA = []
     
     # NEW: 创建一个字典来按SNR存储预测和标签
     # 结构: {'-20dB': {'preds': [...], 'labels': [...]}, '-15dB': ...}
     snr_results = defaultdict(lambda: {'preds': [], 'labels': []})
+    # NEW: 初始化分支正确性统计
+    results = init_branch_results()
+    # NEW: 样本级马赛克统计容器：按(SNR, class)收集每个样本是否判对
+    # 结构: mosaic_store[(snr,label)] = {
+    #   'fcnn': [0/1,...], 'tatt':[...], 'fusion':[...]
+    # }
+    mosaic_store = defaultdict(lambda: {'fcnn': [], 'tatt': [], 'fusion': []})
     
     # 推理计时与显存统计准备
     total_infer_start = time.time()
@@ -278,9 +288,12 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             freq_seq = freq_seq.to(device)
             test_labels = test_labels.to(device)
 
-            main, CKA = model(freq_seq)
+            main, CKA, logits_res, logits_sp = model(freq_seq)
+
             outputs_softmax = torch.softmax(main, dim=1)
             outputs_argmax = torch.argmax(outputs_softmax, dim=1)
+            preds_res = torch.argmax(logits_res, dim=1)
+            preds_sp = torch.argmax(logits_sp, dim=1)
             
             # NEW: 将CPU上的结果存入 snr_results 字典
             batch_preds = outputs_argmax.cpu().numpy()
@@ -296,6 +309,19 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             all_outputs.append(main.cpu())
             all_labels.append(test_labels.cpu())
             all_CKA.append(CKA)
+            # NEW: 记录res与sp的logits以计算它们的准确率
+            all_outputs_res.append(logits_res.cpu())
+            all_outputs_sp.append(logits_sp.cpu())
+
+            # NEW: 使用独立模块更新分支统计
+            results = update_branch_results(results, preds_res, preds_sp, outputs_argmax, test_labels)
+
+            # NEW: 记录样本级正确性到马赛克存储（保持静态顺序：DataLoader迭代顺序）
+            for i in range(test_labels.size(0)):
+                key = (snr_batch[i], int(test_labels[i].item()))
+                mosaic_store[key]['fcnn'].append(int(preds_res[i].item() == test_labels[i].item()))
+                mosaic_store[key]['tatt'].append(int(preds_sp[i].item() == test_labels[i].item()))
+                mosaic_store[key]['fusion'].append(int(outputs_argmax[i].item() == test_labels[i].item()))
 
             # 可选：记录每 batch 用时（不做逐条打印，避免刷屏）
             _ = time.time() - iter_start
@@ -317,6 +343,14 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     _, predicted = torch.max(all_outputs, dim=1)
     correct = (predicted == all_labels).float()
     batch_acc = correct.sum().item()
+
+    # NEW: 计算logits_res与logits_sp的整体准确率
+    all_outputs_res = torch.cat(all_outputs_res, dim=0)
+    all_outputs_sp = torch.cat(all_outputs_sp, dim=0)
+    _, predicted_res = torch.max(all_outputs_res, dim=1)
+    _, predicted_sp = torch.max(all_outputs_sp, dim=1)
+    acc_res = (predicted_res == all_labels).float().sum().item() / len(all_labels)
+    acc_sp = (predicted_sp == all_labels).float().sum().item() / len(all_labels)
     # Overall precision/recall/F1 (macro average)
     overall_precision, overall_recall, overall_f1, _ = precision_recall_fscore_support(
         all_labels.cpu().numpy(),
@@ -343,6 +377,24 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     print(f"[Test] Inference time: {total_infer_sec:.3f}s | {avg_ms_per_sample:.3f} ms/sample | Throughput: {samples_per_sec:.2f} samples/s")
     print(f"[Test] GPU memory: current {mem_mb:.1f} MB | peak {peak_mb:.1f} MB | GPU-hours: {gpu_hours:.4f} h | samples/GPU-hour: {samples_per_gpu_hour:.1f}")
     print(f"[Test] Average CKA between features: {CKA:.4f}")
+    print(f"[Test] Accuracy (logits_res): {acc_res:.4f} | Accuracy (logits_sp): {acc_sp:.4f}")
+
+    # NEW: 打印分支组合统计
+    print("\n--- Branch Correctness (Detailed) ---")
+    print(f"only_fcnn: {results.get('only_fcnn', 0)}")
+    print(f"only_tatt: {results.get('only_tatt', 0)}")
+    print(f"both_fcnn_tatt: {results.get('both_fcnn_tatt', 0)}")
+    print(f"only_fusion: {results.get('only_fusion', 0)}")
+    print(f"fusion_with_branch_correct: {results.get('fusion_with_branch_correct', 0)}")
+    print(f"fusion_only: {results.get('fusion_only', 0)}")
+    print(f"branch_correct_but_fusion_wrong: {results.get('branch_correct_but_fusion_wrong', 0)}")
+    # 保留原摘要（向后兼容）
+    print("--- Legacy Mix ---")
+    print(f"both_correct: {results.get('both_correct', 0)}")
+    print(f"fcnn_only  : {results.get('fcnn_only', 0)}")
+    print(f"tatt_only  : {results.get('tatt_only', 0)}")
+    print(f"both_wrong : {results.get('both_wrong', 0)}")
+    print(f"fusion_rescued: {results.get('fusion_rescued', 0)}")
 
     # --- NEW: 按SNR计算详细指标 (替换您原有的 snr_datas 循环) ---
     
@@ -401,6 +453,163 @@ def test(args, folder_path, model, device, test_loader, target_classes):
 
     print("--- End of Summary ---")
 
+    # NEW: 调用封装的维恩图绘制
+    plot_branch_venn(results, folder_path)
+
+    # NEW: 生成样本级性能马赛克图（类×SNR 的正方形格子；格子内用小正方形表示样本）
+    try:
+        import matplotlib.pyplot as plt
+        import numpy as np
+        # 全局设置字体为 Times New Roman（若系统可用）
+        try:
+            plt.rcParams['font.family'] = 'Times New Roman'
+        except Exception:
+            pass
+        # 布局：行=类别，列=SNR；每个格子为正方形，内部分布样本小方块
+        snr_levels = ['-20dB', '-15dB', '-10dB', '-5dB', '0dB', '5dB', 'pure']
+        num_snr = len(snr_levels)
+        num_classes = args.class_num
+        # 统计每格样本数上限，确定格子边长（小方块网格尺寸）
+        per_cell_counts = np.zeros((num_classes, num_snr), dtype=int)
+        for ci in range(num_classes):
+            for sj, snr in enumerate(snr_levels):
+                per_cell_counts[ci, sj] = len(mosaic_store[(snr, ci)]['fusion'])
+        max_per_cell = int(per_cell_counts.max()) if per_cell_counts.size > 0 else 0
+        if max_per_cell == 0:
+            raise RuntimeError('No samples captured for mosaic plotting.')
+        # 每个格子的内部网格边长：尽量容纳所有样本
+        cell_side = int(np.ceil(np.sqrt(max_per_cell)))  # cell_side x cell_side >= max_per_cell
+        # 为让图更清晰，可以让每个小方块由若干像素组成
+        mini_scale = 1  # 每个样本方块占用的像素边长（>=1），1表示1像素
+        cell_pixels = cell_side * mini_scale
+        H_total = num_classes * cell_pixels
+        W_total = num_snr * cell_pixels
+
+        def build_block_image(branch_key):
+            # 初始化为白色背景
+            img = np.ones((H_total, W_total, 3), dtype=np.float32)
+            # 遍历每个格子
+            for ci in range(num_classes):
+                for sj, snr in enumerate(snr_levels):
+                    seq = mosaic_store[(snr, ci)][branch_key]
+                    # 将样本映射到格子内的 (row, col)
+                    for idx, val in enumerate(seq[:cell_side * cell_side]):
+                        r = idx // cell_side
+                        c = idx % cell_side
+                        # 计算在大图中的像素范围
+                        top = ci * cell_pixels + r * mini_scale
+                        left = sj * cell_pixels + c * mini_scale
+                        # 着色：正确=黑，错误=白（或反色，按需求可调）
+                        color = np.array([0.0, 0.0, 0.0], dtype=np.float32) if val == 1 else np.array([1.0, 1.0, 1.0], dtype=np.float32)
+                        img[top:top+mini_scale, left:left+mini_scale] = color
+            return img
+
+        img_fcnn = build_block_image('fcnn')
+        img_tatt = build_block_image('tatt')
+        img_fusion = build_block_image('fusion')
+
+        def plot_block(img, title, out_name):
+            fig, ax = plt.subplots(figsize=(max(6, num_snr * 1.8), max(4, num_classes * 0.8)))
+            ax.imshow(img, aspect='equal')  # 保持正方形比例
+            # 设置刻度：每列/每行格子中心
+            xticks = [sj * cell_pixels + (cell_pixels - 1) / 2 for sj in range(num_snr)]
+            yticks = [ci * cell_pixels + (cell_pixels - 1) / 2 for ci in range(num_classes)]
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(snr_levels, rotation=0)
+            ax.set_yticks(yticks)
+            ax.set_yticklabels([str(i) for i in range(num_classes)])
+            # 画出格子边界以增强可读性
+            for sj in range(1, num_snr):
+                ax.axvline(sj * cell_pixels - 0.5, color='lightgray', linewidth=0.8)
+            for ci in range(1, num_classes):
+                ax.axhline(ci * cell_pixels - 0.5, color='lightgray', linewidth=0.8)
+            ax.set_xlabel('SNR')
+            ax.set_ylabel('Class')
+            ax.set_title(title)
+            out_png = os.path.join(folder_path, out_name + '.png')
+            out_pdf = os.path.join(folder_path, out_name + '.pdf')
+            fig.savefig(out_png, dpi=300, bbox_inches='tight')
+            fig.savefig(out_pdf, bbox_inches='tight')
+            plt.close(fig)
+
+        plot_block(img_fcnn, 'Block Mosaic (FCNN: black=correct, white=wrong)', 'mosaic_fcnn')
+        plot_block(img_tatt, 'Block Mosaic (T-ATT: black=correct, white=wrong)', 'mosaic_tatt')
+        plot_block(img_fusion, 'Block Mosaic (Fusion: black=correct, white=wrong)', 'mosaic_fusion')
+        print('Saved block mosaics: mosaic_fcnn/mosaic_tatt/mosaic_fusion (png & pdf)')
+
+        # 差异马赛克：Fusion - Branch（格子内小方块按颜色规则着色）
+        def build_diff_block(fusion_key, other_key):
+            img = np.ones((H_total, W_total, 3), dtype=np.float32)
+            counts = {"white": 0, "gray": 0, "green": 0, "red": 0}
+            for ci in range(num_classes):
+                for sj, snr in enumerate(snr_levels):
+                    seq_f = mosaic_store[(snr, ci)][fusion_key]
+                    seq_o = mosaic_store[(snr, ci)][other_key]
+                    # 对齐长度（只统计真实样本）
+                    max_len = min(len(seq_f), len(seq_o), cell_side * cell_side)
+                    for idx in range(max_len):
+                        vf = seq_f[idx]
+                        vo = seq_o[idx]
+                        r = idx // cell_side
+                        c = idx % cell_side
+                        top = ci * cell_pixels + r * mini_scale
+                        left = sj * cell_pixels + c * mini_scale
+                        # 颜色规则与计数
+                        if vf == 0 and vo == 0:
+                            color = np.array([1.0, 1.0, 1.0], dtype=np.float32)  # white
+                            counts["white"] += 1
+                        elif vf == 1 and vo == 1:
+                            color = np.array([0.7, 0.7, 0.7], dtype=np.float32)  # gray
+                            counts["gray"] += 1
+                        elif vf == 1 and vo == 0:
+                            color = np.array([0.0, 0.8, 0.0], dtype=np.float32)  # green
+                            counts["green"] += 1
+                        else:  # vf == 0 and vo == 1
+                            color = np.array([0.9, 0.1, 0.1], dtype=np.float32)  # red
+                            counts["red"] += 1
+                        img[top:top+mini_scale, left:left+mini_scale] = color
+            return img, counts
+
+        img_diff_fcnn, counts_fcnn = build_diff_block('fusion', 'fcnn')
+        img_diff_tatt, counts_tatt = build_diff_block('fusion', 'tatt')
+
+        def plot_diff_block(img, counts, title, out_name):
+            fig, ax = plt.subplots(figsize=(max(6, num_snr * 1.8), max(4, num_classes * 0.8)))
+            ax.imshow(img, aspect='equal')
+            xticks = [sj * cell_pixels + (cell_pixels - 1) / 2 for sj in range(num_snr)]
+            yticks = [ci * cell_pixels + (cell_pixels - 1) / 2 for ci in range(num_classes)]
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(snr_levels, rotation=0)
+            ax.set_yticks(yticks)
+            ax.set_yticklabels([str(i) for i in range(num_classes)])
+            for sj in range(1, num_snr):
+                ax.axvline(sj * cell_pixels - 0.5, color='lightgray', linewidth=0.8)
+            for ci in range(1, num_classes):
+                ax.axhline(ci * cell_pixels - 0.5, color='lightgray', linewidth=0.8)
+            ax.set_xlabel('SNR')
+            ax.set_ylabel('Class')
+            ax.set_title(title)
+            import matplotlib.patches as mpatches
+            legend_patches = [
+                mpatches.Patch(color='white', label=f"both 0 (white): {counts.get('white', 0)}"),
+                mpatches.Patch(color='gray', label=f"both 1 (gray): {counts.get('gray', 0)}"),
+                mpatches.Patch(color='green', label=f"fusion=1, other=0 (green): {counts.get('green', 0)}"),
+                mpatches.Patch(color='red', label=f"fusion=0, other=1 (red): {counts.get('red', 0)}")
+            ]
+            ax.legend(handles=legend_patches, loc='upper right', frameon=True, fontsize=8)
+            # ax.legend(handles=legend_patches, loc='lower right', frameon=True, framealpha=0.3, fontsize=8)
+            out_png = os.path.join(folder_path, out_name + '.png')
+            out_pdf = os.path.join(folder_path, out_name + '.pdf')
+            fig.savefig(out_png, dpi=300, bbox_inches='tight')
+            fig.savefig(out_pdf, bbox_inches='tight')
+            plt.close(fig)
+
+        plot_diff_block(img_diff_fcnn, counts_fcnn, 'Diff Block Mosaic (H-starNet main branch vs. HARNet aux branch)', 'mosaic_diff_fusion_minus_HARNet')
+        plot_diff_block(img_diff_tatt, counts_tatt, 'Diff Block Mosaic (H-starNet main branch vs. SSTA aux branch)', 'mosaic_diff_fusion_minus_SSTA')
+        print('Saved diff block mosaics: mosaic_diff_fusion_minus_fcnn / mosaic_diff_fusion_minus_tatt (png & pdf)')
+    except Exception as e:
+        print(f"[Warn] Failed to plot block-level mosaic: {e}")
+
     # MATLAB-friendly strings
     values_acc = ', '.join(f"{snr_accuracy_data[k]:.4f}" for k in snr_levels)
     values_prec = ', '.join(f"{snr_precision_data[k]:.4f}" for k in snr_levels)
@@ -427,25 +636,9 @@ def test(args, folder_path, model, device, test_loader, target_classes):
 
     # --- 构造最终输出字典字符串 ---
     # 完全匹配您要求的格式
-    # metrics_struct = (
-    #     f"{args.model}_metrics = {{"
-    #     f"'avg_acc': {test_accurate:.4f}, 'avg_precision': {overall_precision:.4f}, "
-    #     f"'avg_recall': {overall_recall:.4f}, 'avg_f1': {overall_f1:.4f}, "
-    #     f"'acc': [{values_acc}], 'precision': [{values_prec}], "
-    #     f"'recall': [{values_rec}], 'f1': [{values_f1}], "
-    #     f"'flops': {flops_int}, 'params': {params_int}, "
-    #     f"'infer_sec': {total_infer_sec:.6f}, "
-    #     # f"'infer_mem_MB': {mem_mb:.2f}, "         # 当前显存
-    #     # f"'infer_peak_MB': {peak_mb:.2f}, "       # 峰值显存 (Batch级别)
-    #     f"'mem_per_sample_MB': {mem_per_sample_MB:.4f}, " # 平均单样本显存
-    #     f"'samples_per_sec': {samples_per_sec:.4f}}}"
-    #     # f"'gpu_hours': {gpu_hours:.6f}, "
-    #     # f"'samples_per_gpu_hour': {samples_per_gpu_hour:.2f}}}"
-    # )
-
     metrics_struct = (
         f"'{args.model}_metrics': {{"
-        f"'avg_acc': {test_accurate:.4f}, 'avg_precision': {overall_precision:.4f}, "
+        f"'avg_acc': {test_accurate:.4f}, 'avg_acc_res': {acc_res:.4f}, 'avg_acc_sp': {acc_sp:.4f}, 'avg_precision': {overall_precision:.4f}, "
         f"'avg_recall': {overall_recall:.4f}, 'avg_f1': {overall_f1:.4f}, "
         f"'acc': [{values_acc}], "
         f"'precision': [{values_prec}], "
@@ -455,7 +648,11 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         f"'gpu_infer_sec': {total_infer_sec:.6f}, "  # 将之前的 infer_sec 改名为 gpu_infer_sec
         f"'mem_per_sample_MB': {mem_per_sample_MB:.4f}, "
         f"'samples_per_sec': {samples_per_sec:.4f}, "
-        f"}}"
+        f"'cka_avg': {CKA:.4f}, "
+        f"'both_correct': {results['both_correct']}, 'fcnn_only': {results['fcnn_only']}, "
+        f"'tatt_only': {results['tatt_only']}, 'both_wrong': {results['both_wrong']}, "
+        f"'fusion_rescued': {results['fusion_rescued']} "
+        f"}},"
     )
 
 
