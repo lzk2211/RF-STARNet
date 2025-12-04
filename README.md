@@ -17,316 +17,204 @@ Beijing University of Posts & Telecommunications.
 </div>
 
 <div align="center">
-  <a href="graph/nn.pdf" target="_blank">
-    <img src="graph/nn.jpg" width="800" alt="点击查看PDF">
+  <a href="graph/mothed.pdf" target="_blank">
+    <img src="graph/mothed.jpg" width="800" alt="点击查看PDF">
   </a>
   <br>
-  <!-- <p>点击上方图片或 <a href="assets/your_document.pdf">此处</a> 查看完整 PDF</p> -->
+  <p>click <a href="graph/mothed.pdf">here</a> to see the PDF</p>
 </div>
 
 ## 📣 News
 
-- [04/Dec/2025] Initial public release of SRSpecNet repository.
-- [xx/xxx/2025] Paper preprint and model weights to be released soon.
-- [xx/xxx/2025] Benchmark scripts and dataset preparation utilities added.
+- [06/Nov/2025] Initial public release of SRSpecNet repository.
+- [20/Nov/2025] Complete the experiments for the proposed innovations, design rigorous comparative experiments, and begin preparing figures for this paper.
+- [04/Dec/2025] The main body of the paper is essentially complete. Detailed updates have been made to the GitHub repository.
+<!-- - [xx/xxx/2025] Paper preprint and model weights to be released soon.
+- [xx/xxx/2025] Benchmark scripts and dataset preparation utilities added. -->
 
-## Abstract
+## 📝 Abstract(Updating)
 
-Spectral super-resolution aims to reconstruct high-dimensional hyperspectral or multispectral information from conventional RGB or limited-band inputs. SRSpecNet addresses this problem with a unified, data-efficient network that leverages cross-modal priors and learned spectral bases to recover fine-grained spectral signatures while preserving spatial detail. Our approach emphasizes robust generalization across sensors and scenes through careful data preparation, multi-loss training, and evaluation on standard benchmarks. Extensive experiments demonstrate that SRSpecNet achieves state-of-the-art performance in spectral reconstruction and downstream tasks including material identification and remote sensing analysis.
+Radio Frequency (RF) fingerprinting is a promising technique for Unmanned Aerial Vehicle (UAV) identification. However, existing methods often struggle to balance recognition accuracy with computational efficiency, especially under low Signal-to-Noise Ratio (SNR) conditions.
 
-<p align="center">
-  <img src="assets/framework.png" alt="Framework" height="260"> &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/results.png" alt="Results" height="260">
-</p>
+This paper proposes **H-starNet**, a lightweight **H**armonic-aware **S**pectro-**T**emporal **A**ttention **R**esidual **Net**work. Our approach disentangles the RF signals into two complementary domains:
 
-## Our Framework
+- **Spectral Branch (HARNet)**: Captures stationary frequency fingerprints (e.g., filter shapes) using a Multi-Resolution Frequency Sparse Module (MRFSM).
+- **Temporal Branch (SSTA)**: Captures dynamic temporal patterns (e.g., hopping sequences) using Sparse Sub-band Temporal Attention.
+
+Coupled with a **Gated Cross-Domain** Fusion mechanism and a **Deep Supervision** training strategy, H-starNet achieves state-of-the-art accuracy with significantly lower computational costs compared to traditional CNNs and Transformers.
+
+## 🏗️ Framework
+
+The overall architecture of H-starNet consists of three main stages:
 
 <div align="center">
-
-<img src="assets/pipeline.png" width="800" alt="SRSpecNet pipeline">
-
+  <a href="graph/nn.pdf" target="_blank">
+    <img src="graph/nn.jpg" width="800" alt="点击查看PDF">
+  </a>
+  <br>
+  <p>click <a href="graph/nn.pdf">here</a> to see the PDF</p>
 </div>
 
-SRSpecNet consists of:
-- A spectral embedding module that maps inputs (e.g., RGB) to a latent spectral space.
-- A reconstruction head that predicts dense spectral bands (e.g., 31-channel hyperspectral).
-- Multi-scale spatial refinement to improve edge fidelity and texture details.
-- Training losses combining spectral angle mapping (SAM), L1/L2, and perceptual consistency.
+- **HARNet (Spectral Branch)**: Extracts time-averaged PSD features using multi-dilation convolutions to capture micro-scale and macro-scale spectral details.
+- **SSTA (Temporal Branch)**: Utilizes local average pooling and grouped self-attention with relative position bias to model long-range temporal dependencies (e.g., OFDM symbol periodicity, FHSS hopping).
+- **Gated Fusion & Deep Supervision**: Uses robust spectral features to guide temporal activation and employs multi-loss optimization (Main + Aux + Orthogonal) to ensure feature complementarity.
 
-## Online Demo
+📂 Dataset
 
-- Coming soon: a hosted demo for quick evaluation and visualization.
-- If you want to contribute a demo (Hugging Face Space or Gradio), please open an issue or a PR.
+We use the **[DroneRFa](https://jeit.ac.cn/cn/article/doi/10.11999/JEIT230570)** dataset for evaluation.
 
-## Datasets
+- **Signals**: Raw I/Q signals collected via USRP.
+- **Preprocessing**: Signals are sliced into 50ms segments and transformed into **512x512 Spectrograms** via STFT.
+- **Categories**: 10 classes (9 Commercial UAVs + 1 Background Noise).
 
-SRSpecNet supports common spectral SR datasets. Please ensure you comply with their licenses:
-- ICVL Hyperspectral Dataset
-- CAVE Hyperspectral Dataset
-- NTIRE Spectral SR challenge datasets
-- Custom datasets with RGB-to-HSI alignment
+**Data Structure**
 
-See [Data Preparation](#data-preparation-for-evaluation) for scripts and folder structures.
-
-## Weights Download
-
-- We will provide pre-trained weights for SRSpecNet soon.
-- After download, place checkpoint files under `weights/`:
-  - `srspecnet_rgb2hsi.pth`
-  - `srspecnet_ms2hsi.pth`
-
-Or run:
-```bash
-bash weights/download.sh
-```
-(Note: the script will be updated with public URLs once the weights are released.)
-
-## Data Preparation for Evaluation
-
-We provide helper scripts to organize datasets into a consistent structure.
-
-<p></p> <details> <summary><b> ICVL </b></summary>
-
-Download ICVL according to the official instructions, then organize as:
+Please organize the dataset as follows:
 
 ```bash
-bash data/prepare_icvl.sh  # will normalize and place files under data/ICVL/
+data_set_5e6/
+├── T0000/
+├── T0001/
+├── T0010/
+├── ...
+└── T1001/
 ```
 
-Expected layout:
-```
-data/
-└── ICVL/
-   ├── train/
-   │   ├── rgb/
-   │   └── hsi/  # 31 channels
-   └── val/
-       ├── rgb/
-       └── hsi/
-```
+## 🛠️ Installation
 
-</details>
-<p></p>
-
-<p></p> <details> <summary><b> CAVE </b></summary>
-
-Download CAVE dataset and arrange:
-
+1. Clone the repository:
 ```bash
-bash data/prepare_cave.sh
-```
-
-</details>
-<p></p>
-
-<p></p> <details> <summary><b> NTIRE </b></summary>
-
-Follow NTIRE guidelines, then:
-
-```bash
-bash data/prepare_ntire.sh
-```
-
-</details>
-<p></p>
-
-### Data Structure
-
-<p></p> <details> <summary><b>Organizing the Dataset</b></summary>
-
-We recommend the following layout:
-
-```
-data/
-├── ICVL/
-│   ├── train/
-│   │   ├── rgb/
-│   │   └── hsi/
-│   └── val/
-│       ├── rgb/
-│       └── hsi/
-├── CAVE/
-│   ├── train/
-│   │   ├── rgb/
-│   │   └── hsi/
-│   └── val/
-│       ├── rgb/
-│       └── hsi/
-└── NTIRE/
-    ├── train/
-    │   ├── rgb/
-    │   └── hsi/
-    └── val/
-        ├── rgb/
-        └── hsi/
-```
-
-</details>
-<p></p>
-
-## Installation and Environment Setup
-
-The repository is primarily Python (97.5%) with some Shell utilities.
-
-- Clone the repository:
-```bash
-git clone https://github.com/lzk2211/SRSpecNet.git
+git clone [https://github.com/lzk2211/SRSpecNet.git](https://github.com/lzk2211/SRSpecNet.git)
 cd SRSpecNet
 ```
-
-- Create environment:
+2. Install dependencies:
 ```bash
-conda env create -f environment.yaml
-conda activate srspecnet
+conda install pytorch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 pytorch-cuda=12.4 -c pytorch -c nvidia
+pip install -r requirements.txt
 ```
 
-- Initialize submodules if present:
-```bash
-git submodule update --init --recursive
-git submodule update --recursive --remote
-```
+## 🚀 Usage
 
-## Quick Start
+The main entry point is main.py. You can switch between training and testing modes using command line arguments.
 
-- Run a demo after placing weights:
-```bash
-python demo.py --input demo/rgb.png --save_dir ./demo --ckpt weights/srspecnet_rgb2hsi.pth
-```
+**Training**
 
-- Visualize spectra at selected pixels:
-```bash
-python tools/visualize_spectra.py --hsi demo/output_hsi.npy --coords 120,200 64,64
-```
-
-## Evaluation
-
-We provide evaluation scripts for spectral reconstruction and downstream metrics.
-
-### Test on Validation Sets
+To train the **H-starNet (Small version)** with Multi-Loss Deep Supervision:
 
 ```bash
-python test_spectral_sr.py --dataset icvl --rgb_dir data/ICVL/val/rgb --hsi_dir data/ICVL/val/hsi --ckpt weights/srspecnet_rgb2hsi.pth --save_dir ./eval/icvl
-
-python test_spectral_sr.py --dataset cave --rgb_dir data/CAVE/val/rgb --hsi_dir data/CAVE/val/hsi --ckpt weights/srspecnet_rgb2hsi.pth --save_dir ./eval/cave
+python main.py \
+  --mode Train \
+  --model F_T_small_mulitloss_1122 \
+  --exp_name F_T_small_mulitloss_1122 \
+  --root_path /path/to/your/data_set_5e6 \
+  --batch_size 64 \
+  --epochs 250 \
+  --lr 0.0001 \
+  --seed 42
 ```
 
-Supported metrics:
-- RMSE, PSNR (per band and averaged)
-- SAM (Spectral Angle Mapper)
-- MAE
-- Optional perceptual metrics for RGB reconstruction
+Key Arguments:
 
-## Figures and Graphs
+- `--model`: The model factory function name (e.g., F_T for fusion model).
+- `--exp_name`: The runing results save in this project.
+- `--root_path`: Path to the preprocessed spectrogram dataset.
 
-The repository includes publication-ready figures under `graph/` (EPS/PDF). EPS/PDF are optimized for LaTeX and journal submissions; preview locally or convert to PNG if needed.
+## 📊 Results
 
-- Acc–FLOPs/Params: `graph/markers_chart_flops.eps`, `graph/markers_chart_params.eps`
-- SNR curves (macro metrics): `graph/acc.eps`, `graph/precision.eps`, `graph/recall.eps`, `graph/f1.eps`
-- Mosaic diffs (Fusion vs branches): `graph/mosaic_diff_fusion_minus_HARNet.pdf`, `graph/mosaic_diff_fusion_minus_SSTA.pdf`
-- Other diagrams: `graph/HARNet.pdf`, `graph/SSTA.pdf`, `graph/nn.pdf`, `graph/methodologies.pdf`, `graph/result.pdf`, `graph/Loss.pdf`
-- Legacy chart (kept for reference): `graph/bubble_chart_high_contrast.eps`
+Performance comparison on DroneRFa dataset (Avg Accuracy vs. Efficiency):
 
-Notes:
-- SNR labels display `10dB` (formerly shown as `pure`) for consistency across all plots.
-- Figures are sized for single-column placement in two-column papers (Times New Roman fonts, compact legends).
+### Comprehensive Analysis: Ablation Study & Performance Comparison (Small Scale Focus)
 
-### Reproduce the Figures
+**Table Caption:** Part I details the impact of specific modules on the Small architecture relative to the baseline. Part II compares our final models against state-of-the-art methods. MEI is calculated as $Acc / \log(Params \times MACs)$.
 
-Generate the model scatter charts (accuracy vs FLOPs/Params):
+| Model / Configuration | Avg Acc (%) | Params (M) | MACs (M) | MEI (Score) | GPU Infer. Time (s) | CPU Infer. Time (s) | Memory (MB) | Train Cost (GPU/h) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Part I: Module Ablation Study** | | | | | | | | |
+| *1. HARNet Architecture* | | | | | | | | |
+| Baseline | 69.43 | 0.019 | 0.59 | 6.90 | 4.68 | 6.49 | 1.21 | 0.62 |
+| w/ SE Block | 70.29 (+0.86%) | 0.031 | 0.68 | 6.81 (-1.30%) | 4.56 | 6.44 | 1.21 | 0.60 |
+| w/ MRFSM | 72.53 (+3.10%) | 0.019 | 0.59 | **7.21** (+4.49%) | 4.62 | 6.87 | 1.20 | 0.76 |
+| **HARNet (Ours)** | **77.81** (+8.38%) | 0.111 | 2.01 | 6.86 (-0.58%) | 4.54 | 7.13 | 1.29 | 0.60 |
+| *2. SSTA Architecture* | | | | | | | | |
+| Baseline | 74.18 | 0.550 | 273.70 | 5.23 | 3.66 | 19.63 | 7.44 | 0.95 |
+| Abs. Pos. Enc. | 30.81 (-43.37%) | 0.042 | 1.75 | 2.83 (-45.89%) | 4.76 | 21.74 | 1.78 | 0.45 |
+| w/ Stem | 74.33 (+0.15%) | 0.550 | 34.26 | 5.60 (+7.07%) | 4.55 | 7.69 | 1.93 | 0.78 |
+| w/ Grouped | 75.21 (+1.03%) | 0.042 | 13.65 | 6.40 (+22.37%) | 7.06 | 287.63 | 6.86 | 3.19 |
+| **SSTA (Ours)** | **75.79** (+1.61%) | 0.042 | 1.75 | **6.97** (+33.27%) | 4.52 | 14.91 | 1.79 | 0.37 |
+| *3. H-starNet (Fusion) Architecture* | | | | | | | | |
+| Baseline | 78.89 | 0.144 | 3.75 | 6.72 | 4.81 | 19.02 | 1.80 | 0.73 |
+| w/ Gating Mechanism | 80.41 (+1.52%) | 0.177 | 3.79 | 6.80 (+1.19%) | 4.71 | 27.16 | 1.80 | 0.72 |
+| w/ Multi-Loss | 79.32 (+0.43%) | 0.154 | 3.76 | 6.74 (+0.30%) | 4.72 | 17.18 | 1.93 | 1.38 |
+| **H-starNet (Ours)** | **81.44** (+2.55%) | 0.188 | 3.80 | **6.87** (+2.23%) | 3.65 | 19.12 | 1.80 | 1.07 |
+| **Part II: Benchmark Comparison** | | | | | | | | |
+| *Comparison Methods* | | | | | | | | |
+| MobileNetV3-Small | 77.36 | 0.930 | 316.03 | 5.35 | 5.67 | - | 14.19 | - |
+| ResNet18 | 76.11 | 11.180 | 9115.93 | 4.48 | 15.21 | - | 34.59 | - |
+| 1D-LW-ResNet18 | 73.92 | 0.135 | 3.54 | 6.33 | 3.51 | 7.22 | 1.29 | - |
+| S3R | 72.04 | 34.530 | 547.85 | 4.43 | 10.93 | - | 11.26 | - |
 
-```bash
-python plot_graph/markers.py
-```
+## 🔬 Analysis & Visualization
 
-Generate the per-SNR metric curves (accuracy/precision/recall/F1):
+To investigate the internal working mechanism of H-starNet, we provide detailed visualizations of feature activation and error distribution.
 
-```bash
-python plot_graph/plot_graph4_5test.py
-```
+### 1. Class Activation Mapping (CAM)
 
-Produce mosaic and diff-mosaic plots via the test pipeline (artifacts are saved under your experiment folder; you may copy selected PDFs to `graph/`):
+We utilize CAM to visualize the regions of interest for different network branches.
 
-```bash
-python main.py --mode Test --model <YourModelName> \
-  --exp_name <your/exp/folder> --seed 42
-```
+<div align="center">
+  <a href="graph/result.pdf" target="_blank">
+    <img src="graph/result.jpg" width="800" alt="点击查看PDF">
+  </a>
+  <br>
+  <p>click <a href="graph/result.pdf">here</a> to see the PDF</p>
+</div>
 
-Optional: convert EPS/PDF to PNG for quick previews (requires Ghostscript):
+- **HARNet**: Displays distinct horizontal stripe patterns, indicating its focus on positional information of critical frequency blocks.
 
-```bash
-gs -sDEVICE=pngalpha -o graph/markers_chart_flops.png -r300 graph/markers_chart_flops.eps
-gs -sDEVICE=pngalpha -o graph/markers_chart_params.png -r300 graph/markers_chart_params.eps
-```
+- **SSTA**: Leverages global temporal correlations to produce precise masks covering all relevant frequency blocks (e.g., VTS and FCS signals), demonstrating superior noise resistance.
 
-### Command Line Options
+- **2D-CNN**: Tends to perceive frequency blocks as a single holistic object, lacking signal-specific refinement compared to our specialized branches.
 
-Common flags:
-- `--dataset [icvl|cave|ntire|custom]`
-- `--rgb_dir PATH`
-- `--hsi_dir PATH`
-- `--ckpt PATH`
-- `--save_dir PATH`
-- `--save_figs` to save visualization images
-- `--bands 31` for target spectral channels
+### 2. Mosaic Error Analysis
 
-## Training
+To validate the synergistic effect of the dual-branch fusion, we conducted a detailed error analysis using mosaic plots. Green pixels indicate samples where the fused model corrected the error of a single branch.
 
-See [Training Guide](./train_orders/README.md) for details.
+<div align="center">
+<table>
+<tr>
+<td style="text-align:center">
+<img src="graph/mosaic_diff_fusion_minus_HARNet.jpg" width="400" alt="Fusion vs HARNet">
 
-Typical command:
-```bash
-python train.py \
-  --dataset icvl \
-  --rgb_dir data/ICVL/train/rgb \
-  --hsi_dir data/ICVL/train/hsi \
-  --val_rgb_dir data/ICVL/val/rgb \
-  --val_hsi_dir data/ICVL/val/hsi \
-  --epochs 200 \
-  --batch_size 8 \
-  --lr 2e-4 \
-  --save_dir runs/icvl_srspecnet
-```
+<b>(a) Fusion vs. HARNet Branch</b>
+</td>
+<td style="text-align:center">
+<img src="graph/mosaic_diff_fusion_minus_SSTA.jpg" width="400" alt="Fusion vs SSTA">
 
-Notes:
-- Adjust learning rate and batch size based on GPU memory.
-- Use mixed precision (`--amp`) for faster training.
-- Enable spectral losses in `configs/loss.yaml`.
+<b>(b) Fusion vs. SSTA Branch</b>
+</td>
+</tr>
+</table>
+</div>
 
-## TODO List
+- **Fig (a)**: H-starNet compensates for HARNet's deficiencies in **lower SNR regions** (dense green points), proving that temporal features are crucial when spectral features are corrupted by noise.
 
-- [x] Initial Release
-- [x] Evaluation Scripts
-- [x] Training Code
-- [ ] Pre-trained Weights
-- [ ] Online Demo
-- [ ] Extended Benchmarks and More Datasets
-- [ ] Model Zoo and Ablations
+- **Fig (b)**: While SSTA may perform suboptimally at high SNRs, the fused model maintains high accuracy by leveraging HARNet. In **low-SNR conditions**, H-starNet effectively exploits SSTA's robust global correlation features to ensure stability.
 
-## Acknowledgement
+**Conclusion**: The fusion mechanism successfully synthesizes the distinct advantages of both architectures, achieving consistent and robust performance across the entire SNR spectrum.
 
-We thank the maintainers and authors of spectral SR datasets and baselines. This repository includes inspiration and utilities from:
-- Spectral SR community datasets (ICVL, CAVE, NTIRE)
-- PyTorch ecosystem and scientific computing libraries
 
-If any third-party components are used under specific licenses, please refer to their respective repositories and comply accordingly.
+## 🔗 Citation
 
-## Citation
-
-If you find SRSpecNet useful, please consider citing:
+If you find this work useful for your research, please consider citing:
 
 ```bibtex
-@inproceedings{your2025srspecnet,
-  title={SRSpecNet: Spectral Super-Resolution and Reconstruction Network},
-  author={Your Name and Collaborators},
-  booktitle={Proceedings of the Conference on Computer Vision and Pattern Recognition},
+@article{liu2025harmony,
+  title={Harmony in Time and Frequency: Lightweight Spectro-Temporal Disentanglement for UAV RF Fingerprinting},
+  author={Liu, Zhenkun and Liao, Yunling and Dai, Zhiyv and Mu, JunSheng},
+  journal={arXiv preprint},
   year={2025}
 }
 ```
-
-Update this entry with your actual paper details when available.
-
 ## License
 
 This repository is under the [Apache-2.0 license](./LICENSE).
-
-Please review third-party dataset and baseline licenses before use.
