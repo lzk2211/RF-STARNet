@@ -17,11 +17,11 @@ Beijing University of Posts & Telecommunications.
 </div>
 
 <div align="center">
-  <a href="graph/mothed.pdf" target="_blank">
+  <a href="graph/methodologies.pdf" target="_blank">
     <img src="graph/mothed.jpg" width="800" alt="点击查看PDF">
   </a>
   <br>
-  <p>click <a href="graph/mothed.pdf">here</a> to see the PDF</p>
+  <p>click <a href="graph/methodologies.pdf">here</a> to see the PDF</p>
 </div>
 
 ## 📣 News
