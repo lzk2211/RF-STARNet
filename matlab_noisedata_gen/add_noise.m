@@ -27,3 +27,4 @@ function [rx_noisy] = add_noise(signal, snr_dB)
     end
 %     end
 end
+

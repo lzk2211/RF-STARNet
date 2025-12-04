@@ -413,8 +413,8 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         f"'flops': {flops_int}, 'params': {params_int}, "
         f"'gpu_infer_sec': {total_infer_sec:.6f}, "  # 将之前的 infer_sec 改名为 gpu_infer_sec
         f"'mem_per_sample_MB': {mem_per_sample_MB:.4f}, "
-        f"'samples_per_sec': {samples_per_sec:.4f}, "
-        f"}}"
+        f"'samples_per_sec': {samples_per_sec:.4f} "
+        f"}},"
     )
 
     print("\n" + "="*20 + " Final Metrics for Copying " + "="*20)

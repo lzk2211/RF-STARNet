@@ -170,7 +170,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         snrs = []
         # val_steps = len(validate_loader)
 
-        snr_datas = {"-20dB": 0, "-15dB": 0, "-10dB": 0, "-5dB": 0, "0dB": 0, "5dB": 0, "pure": 0}
+        snr_datas = {"-20dB": 0, "-15dB": 0, "-10dB": 0, "-5dB": 0, "0dB": 0, "5dB": 0, "10dB": 0}
         with torch.no_grad():
             val_bar = tqdm(validate_loader, file=sys.stdout)
             for val_data in val_bar:
@@ -204,7 +204,7 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         for key, value in snr_datas.items():
             snr_datas[key] = value / snrs.count(key)
         
-        summary = f"Epoch {epoch+1:3d}/{args.epochs} | Train: {train_loss:.4f} | Train Acc: {train_accuracy:.4f} | Val Acc: {val_accurate:.4f} | -20dB: {snr_datas['-20dB']:.4f} | -15dB: {snr_datas['-15dB']:.4f} | -10dB: {snr_datas['-10dB']:.4f} | -5dB: {snr_datas['-5dB']:.4f} | 0dB: {snr_datas['0dB']:.4f} | 5dB: {snr_datas['5dB']:.4f} | pure: {snr_datas['pure']:.4f} | LR: {current_lr:.6f} | "
+        summary = f"Epoch {epoch+1:3d}/{args.epochs} | Train: {train_loss:.4f} | Train Acc: {train_accuracy:.4f} | Val Acc: {val_accurate:.4f} | -20dB: {snr_datas['-20dB']:.4f} | -15dB: {snr_datas['-15dB']:.4f} | -10dB: {snr_datas['-10dB']:.4f} | -5dB: {snr_datas['-5dB']:.4f} | 0dB: {snr_datas['0dB']:.4f} | 5dB: {snr_datas['5dB']:.4f} | 10dB: {snr_datas['10dB']:.4f} | LR: {current_lr:.6f} | "
         print(summary)
 
         if val_acc > best_acc:
@@ -402,14 +402,16 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     print(f"{'SNR':<8} | {'Accuracy':<10} | {'Precision':<10} | {'Recall':<10} | {'F1-Score':<10}")
     print("-" * 54)
 
-    snr_levels = ['-20dB', '-15dB', '-10dB', '-5dB', '0dB', '5dB', 'pure']
+    # 显示标签：将 'pure' 显示为 '10dB'，读取数据时仍用 'pure' 键
+    snr_levels_display = ['-20dB', '-15dB', '-10dB', '-5dB', '0dB', '5dB', '10dB']
     snr_accuracy_data = {}   # 每个 SNR 的准确率
     snr_precision_data = {}  # 每个 SNR 的宏平均精确率
     snr_recall_data = {}     # 每个 SNR 的宏平均召回率
     snr_f1_data = {}         # 每个 SNR 的宏平均 F1
 
-    for snr_val in snr_levels:
-        if snr_val not in snr_results:
+    for snr_val in snr_levels_display:
+        data_key = 'pure' if snr_val == '10dB' else snr_val
+        if data_key not in snr_results:
             print(f"Warning: No data found for SNR {snr_val}")
             snr_accuracy_data[snr_val] = 0
             snr_precision_data[snr_val] = 0
@@ -417,8 +419,8 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             snr_f1_data[snr_val] = 0
             continue
             
-        snr_preds = snr_results[snr_val]['preds']
-        snr_labels = snr_results[snr_val]['labels']
+        snr_preds = snr_results[data_key]['preds']
+        snr_labels = snr_results[data_key]['labels']
         
         if len(snr_labels) == 0:
             print(f"Warning: No samples for SNR {snr_val}")
@@ -465,41 +467,44 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             plt.rcParams['font.family'] = 'Times New Roman'
         except Exception:
             pass
-        # 布局：行=类别，列=SNR；每个格子为正方形，内部分布样本小方块
-        snr_levels = ['-20dB', '-15dB', '-10dB', '-5dB', '0dB', '5dB', 'pure']
-        num_snr = len(snr_levels)
+        # 布局调整：横轴=Class，纵轴=SNR；每个格子为正方形，内部分布样本小方块
+        # 显示标签用 '10dB'，数据访问仍使用 'pure'
+        snr_levels_display = ['-20dB', '-15dB', '-10dB', '-5dB', '0dB', '5dB', '10dB']
+        num_snr = len(snr_levels_display)
         num_classes = args.class_num
         # 统计每格样本数上限，确定格子边长（小方块网格尺寸）
-        per_cell_counts = np.zeros((num_classes, num_snr), dtype=int)
-        for ci in range(num_classes):
-            for sj, snr in enumerate(snr_levels):
-                per_cell_counts[ci, sj] = len(mosaic_store[(snr, ci)]['fusion'])
+        per_cell_counts = np.zeros((num_snr, num_classes), dtype=int)
+        def _map_display_to_data(s):
+            return 'pure' if s == '10dB' else s
+
+        for si, snr in enumerate(snr_levels_display):
+            snr_data_key = _map_display_to_data(snr)
+            for cj in range(num_classes):
+                per_cell_counts[si, cj] = len(mosaic_store[(snr_data_key, cj)]['fusion'])
         max_per_cell = int(per_cell_counts.max()) if per_cell_counts.size > 0 else 0
         if max_per_cell == 0:
             raise RuntimeError('No samples captured for mosaic plotting.')
         # 每个格子的内部网格边长：尽量容纳所有样本
         cell_side = int(np.ceil(np.sqrt(max_per_cell)))  # cell_side x cell_side >= max_per_cell
-        # 为让图更清晰，可以让每个小方块由若干像素组成
-        mini_scale = 1  # 每个样本方块占用的像素边长（>=1），1表示1像素
+        mini_scale = 1  # 每个样本方块占用的像素边长
         cell_pixels = cell_side * mini_scale
-        H_total = num_classes * cell_pixels
-        W_total = num_snr * cell_pixels
+        # 注意：横轴为类、纵轴为SNR，故总宽度按类别，总高度按SNR
+        W_total = num_classes * cell_pixels
+        H_total = num_snr * cell_pixels
 
         def build_block_image(branch_key):
-            # 初始化为白色背景
+            # 初始化为白色背景；高度对应 SNR，宽度对应 Class
             img = np.ones((H_total, W_total, 3), dtype=np.float32)
-            # 遍历每个格子
-            for ci in range(num_classes):
-                for sj, snr in enumerate(snr_levels):
-                    seq = mosaic_store[(snr, ci)][branch_key]
-                    # 将样本映射到格子内的 (row, col)
+            # 遍历每个格子：si 对应 SNR（纵向），cj 对应 Class（横向）
+            for si, snr in enumerate(snr_levels_display):
+                snr_data_key = _map_display_to_data(snr)
+                for cj in range(num_classes):
+                    seq = mosaic_store[(snr_data_key, cj)][branch_key]
                     for idx, val in enumerate(seq[:cell_side * cell_side]):
                         r = idx // cell_side
                         c = idx % cell_side
-                        # 计算在大图中的像素范围
-                        top = ci * cell_pixels + r * mini_scale
-                        left = sj * cell_pixels + c * mini_scale
-                        # 着色：正确=黑，错误=白（或反色，按需求可调）
+                        top = si * cell_pixels + r * mini_scale
+                        left = cj * cell_pixels + c * mini_scale
                         color = np.array([0.0, 0.0, 0.0], dtype=np.float32) if val == 1 else np.array([1.0, 1.0, 1.0], dtype=np.float32)
                         img[top:top+mini_scale, left:left+mini_scale] = color
             return img
@@ -509,26 +514,27 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         img_fusion = build_block_image('fusion')
 
         def plot_block(img, title, out_name):
-            fig, ax = plt.subplots(figsize=(max(6, num_snr * 1.8), max(4, num_classes * 0.8)))
-            ax.imshow(img, aspect='equal')  # 保持正方形比例
-            # 设置刻度：每列/每行格子中心
-            xticks = [sj * cell_pixels + (cell_pixels - 1) / 2 for sj in range(num_snr)]
-            yticks = [ci * cell_pixels + (cell_pixels - 1) / 2 for ci in range(num_classes)]
+            # 适配双栏单栏：较紧凑尺寸与字号
+            fig, ax = plt.subplots(figsize=(3.4, 2.4))
+            ax.imshow(img, aspect='equal')
+            # 刻度：横轴类、纵轴 SNR
+            xticks = [cj * cell_pixels + (cell_pixels - 1) / 2 for cj in range(num_classes)]
+            yticks = [si * cell_pixels + (cell_pixels - 1) / 2 for si in range(num_snr)]
             ax.set_xticks(xticks)
-            ax.set_xticklabels(snr_levels, rotation=0)
+            ax.set_xticklabels([str(i) for i in range(num_classes)], fontsize=8)
             ax.set_yticks(yticks)
-            ax.set_yticklabels([str(i) for i in range(num_classes)])
-            # 画出格子边界以增强可读性
-            for sj in range(1, num_snr):
-                ax.axvline(sj * cell_pixels - 0.5, color='lightgray', linewidth=0.8)
-            for ci in range(1, num_classes):
-                ax.axhline(ci * cell_pixels - 0.5, color='lightgray', linewidth=0.8)
-            ax.set_xlabel('SNR')
-            ax.set_ylabel('Class')
-            ax.set_title(title)
+            ax.set_yticklabels(snr_levels_display, fontsize=8)
+            # 边界线
+            for cj in range(1, num_classes):
+                ax.axvline(cj * cell_pixels - 0.5, color='lightgray', linewidth=0.6)
+            for si in range(1, num_snr):
+                ax.axhline(si * cell_pixels - 0.5, color='lightgray', linewidth=0.6)
+            ax.set_xlabel('Class', fontsize=10, fontweight='bold')
+            ax.set_ylabel('SNR', fontsize=10, fontweight='bold')
+            # ax.set_title(title, fontsize=10)
             out_png = os.path.join(folder_path, out_name + '.png')
             out_pdf = os.path.join(folder_path, out_name + '.pdf')
-            fig.savefig(out_png, dpi=300, bbox_inches='tight')
+            fig.savefig(out_png, dpi=300, bbox_inches='tight', pad_inches=0.02)
             fig.savefig(out_pdf, bbox_inches='tight')
             plt.close(fig)
 
@@ -541,10 +547,11 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         def build_diff_block(fusion_key, other_key):
             img = np.ones((H_total, W_total, 3), dtype=np.float32)
             counts = {"white": 0, "gray": 0, "green": 0, "red": 0}
-            for ci in range(num_classes):
-                for sj, snr in enumerate(snr_levels):
-                    seq_f = mosaic_store[(snr, ci)][fusion_key]
-                    seq_o = mosaic_store[(snr, ci)][other_key]
+            for si, snr in enumerate(snr_levels_display):
+                snr_data_key = _map_display_to_data(snr)
+                for cj in range(num_classes):
+                    seq_f = mosaic_store[(snr_data_key, cj)][fusion_key]
+                    seq_o = mosaic_store[(snr_data_key, cj)][other_key]
                     # 对齐长度（只统计真实样本）
                     max_len = min(len(seq_f), len(seq_o), cell_side * cell_side)
                     for idx in range(max_len):
@@ -552,8 +559,8 @@ def test(args, folder_path, model, device, test_loader, target_classes):
                         vo = seq_o[idx]
                         r = idx // cell_side
                         c = idx % cell_side
-                        top = ci * cell_pixels + r * mini_scale
-                        left = sj * cell_pixels + c * mini_scale
+                        top = si * cell_pixels + r * mini_scale
+                        left = cj * cell_pixels + c * mini_scale
                         # 颜色规则与计数
                         if vf == 0 and vo == 0:
                             color = np.array([1.0, 1.0, 1.0], dtype=np.float32)  # white
@@ -574,21 +581,21 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         img_diff_tatt, counts_tatt = build_diff_block('fusion', 'tatt')
 
         def plot_diff_block(img, counts, title, out_name):
-            fig, ax = plt.subplots(figsize=(max(6, num_snr * 1.8), max(4, num_classes * 0.8)))
+            fig, ax = plt.subplots(figsize=(3.4, 2.4))
             ax.imshow(img, aspect='equal')
-            xticks = [sj * cell_pixels + (cell_pixels - 1) / 2 for sj in range(num_snr)]
-            yticks = [ci * cell_pixels + (cell_pixels - 1) / 2 for ci in range(num_classes)]
+            xticks = [cj * cell_pixels + (cell_pixels - 1) / 2 for cj in range(num_classes)]
+            yticks = [si * cell_pixels + (cell_pixels - 1) / 2 for si in range(num_snr)]
             ax.set_xticks(xticks)
-            ax.set_xticklabels(snr_levels, rotation=0)
+            ax.set_xticklabels([str(i) for i in range(num_classes)], fontsize=8)
             ax.set_yticks(yticks)
-            ax.set_yticklabels([str(i) for i in range(num_classes)])
-            for sj in range(1, num_snr):
-                ax.axvline(sj * cell_pixels - 0.5, color='lightgray', linewidth=0.8)
-            for ci in range(1, num_classes):
-                ax.axhline(ci * cell_pixels - 0.5, color='lightgray', linewidth=0.8)
-            ax.set_xlabel('SNR')
-            ax.set_ylabel('Class')
-            ax.set_title(title)
+            ax.set_yticklabels(snr_levels_display, fontsize=8)
+            for cj in range(1, num_classes):
+                ax.axvline(cj * cell_pixels - 0.5, color='lightgray', linewidth=0.6)
+            for si in range(1, num_snr):
+                ax.axhline(si * cell_pixels - 0.5, color='lightgray', linewidth=0.6)
+            ax.set_xlabel('Class', fontsize=10, fontweight='bold')
+            ax.set_ylabel('SNR', fontsize=10, fontweight='bold')
+            # ax.set_title(title, fontsize=10)
             import matplotlib.patches as mpatches
             legend_patches = [
                 mpatches.Patch(color='white', label=f"both 0 (white): {counts.get('white', 0)}"),
@@ -596,25 +603,68 @@ def test(args, folder_path, model, device, test_loader, target_classes):
                 mpatches.Patch(color='green', label=f"fusion=1, other=0 (green): {counts.get('green', 0)}"),
                 mpatches.Patch(color='red', label=f"fusion=0, other=1 (red): {counts.get('red', 0)}")
             ]
-            ax.legend(handles=legend_patches, loc='upper right', frameon=True, fontsize=8)
+            ax.legend(handles=legend_patches, loc='lower right', frameon=True, framealpha=0.5, fontsize=7, borderpad=0.3)
             # ax.legend(handles=legend_patches, loc='lower right', frameon=True, framealpha=0.3, fontsize=8)
             out_png = os.path.join(folder_path, out_name + '.png')
             out_pdf = os.path.join(folder_path, out_name + '.pdf')
-            fig.savefig(out_png, dpi=300, bbox_inches='tight')
+            fig.savefig(out_png, dpi=300, bbox_inches='tight', pad_inches=0.02)
             fig.savefig(out_pdf, bbox_inches='tight')
             plt.close(fig)
 
-        plot_diff_block(img_diff_fcnn, counts_fcnn, 'Diff Block Mosaic (H-starNet main branch vs. HARNet aux branch)', 'mosaic_diff_fusion_minus_HARNet')
-        plot_diff_block(img_diff_tatt, counts_tatt, 'Diff Block Mosaic (H-starNet main branch vs. SSTA aux branch)', 'mosaic_diff_fusion_minus_SSTA')
-        print('Saved diff block mosaics: mosaic_diff_fusion_minus_fcnn / mosaic_diff_fusion_minus_tatt (png & pdf)')
+        # 上下排列的合并图：上(Fusion-HARNet)，下(Fusion-SSTA)
+        try:
+            fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(3.4, 4.8), sharex=True, sharey=True)
+            # 顶部
+            ax_top.imshow(img_diff_fcnn, aspect='equal')
+            xticks = [cj * cell_pixels + (cell_pixels - 1) / 2 for cj in range(num_classes)]
+            yticks = [si * cell_pixels + (cell_pixels - 1) / 2 for si in range(num_snr)]
+            ax_top.set_xticks(xticks)
+            ax_top.set_xticklabels([str(i) for i in range(num_classes)], fontsize=8)
+            ax_top.set_yticks(yticks)
+            ax_top.set_yticklabels(snr_levels_display, fontsize=8)
+            for cj in range(1, num_classes):
+                ax_top.axvline(cj * cell_pixels - 0.5, color='lightgray', linewidth=0.6)
+            for si in range(1, num_snr):
+                ax_top.axhline(si * cell_pixels - 0.5, color='lightgray', linewidth=0.6)
+            ax_top.set_xlabel('Class', fontsize=10, fontweight='bold')
+            ax_top.set_ylabel('SNR', fontsize=10, fontweight='bold')
+            # ax_top.set_title('Diff Block (H-starNet vs HARNet)', fontsize=10)
+
+            # 底部
+            ax_bottom.imshow(img_diff_tatt, aspect='equal')
+            ax_bottom.set_xticks(xticks)
+            ax_bottom.set_xticklabels([str(i) for i in range(num_classes)], fontsize=8)
+            ax_bottom.set_yticks(yticks)
+            ax_bottom.set_yticklabels(snr_levels_display, fontsize=8)
+            for cj in range(1, num_classes):
+                ax_bottom.axvline(cj * cell_pixels - 0.5, color='lightgray', linewidth=0.6)
+            for si in range(1, num_snr):
+                ax_bottom.axhline(si * cell_pixels - 0.5, color='lightgray', linewidth=0.6)
+            ax_bottom.set_xlabel('Class', fontsize=10, fontweight='bold')
+            ax_bottom.set_ylabel('SNR', fontsize=10, fontweight='bold')
+            # ax_bottom.set_title('Diff Block (H-starNet vs SSTA)', fontsize=10)
+
+            plt.tight_layout()
+            out_png = os.path.join(folder_path, 'mosaic_diff_combined_vertical.png')
+            out_pdf = os.path.join(folder_path, 'mosaic_diff_combined_vertical.pdf')
+            fig.savefig(out_png, dpi=300, bbox_inches='tight', pad_inches=0.02)
+            fig.savefig(out_pdf, bbox_inches='tight')
+            plt.close(fig)
+        except Exception:
+            pass
+
+        # 同时单独保存上下两张图以备选择
+        plot_diff_block(img_diff_fcnn, counts_fcnn, 'Diff Block Mosaic (H-starNet vs HARNet)', 'mosaic_diff_fusion_minus_HARNet')
+        plot_diff_block(img_diff_tatt, counts_tatt, 'Diff Block Mosaic (H-starNet vs SSTA)', 'mosaic_diff_fusion_minus_SSTA')
+        print('Saved diff block mosaics (vertical combined + individual).')
     except Exception as e:
         print(f"[Warn] Failed to plot block-level mosaic: {e}")
 
     # MATLAB-friendly strings
-    values_acc = ', '.join(f"{snr_accuracy_data[k]:.4f}" for k in snr_levels)
-    values_prec = ', '.join(f"{snr_precision_data[k]:.4f}" for k in snr_levels)
-    values_rec = ', '.join(f"{snr_recall_data[k]:.4f}" for k in snr_levels)
-    values_f1 = ', '.join(f"{snr_f1_data[k]:.4f}" for k in snr_levels)
+    values_acc = ', '.join(f"{snr_accuracy_data[k]:.4f}" for k in snr_levels_display)
+    values_prec = ', '.join(f"{snr_precision_data[k]:.4f}" for k in snr_levels_display)
+    values_rec = ', '.join(f"{snr_recall_data[k]:.4f}" for k in snr_levels_display)
+    values_f1 = ', '.join(f"{snr_f1_data[k]:.4f}" for k in snr_levels_display)
 
     # --- 计算 FLOPs 和 Params ---
     # 注意：这里假设输入尺寸为 (1, 1, 512, 512)，如果您的模型输入是 (1, 2, 1024) 等其他形状，请修改此处

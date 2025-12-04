@@ -15,11 +15,12 @@ from model1117.Fcnn_Tatt_gate_mulitloss import F_T
 from dataset.ZJU_dataset_pre_multiSNR import data_set_split
 
 class GradCAM:
-    def __init__(self, model, target_layer):
+    def __init__(self, model, target_layer, require_1d_fix=False):
         self.model = model
         self.target_layer = target_layer
         self.gradients = None
         self.activations = None
+        self.require_1d_fix = require_1d_fix
 
         # 注册 Hook
         # 针对不同版本的 PyTorch，backward_hook 的行为可能不同，这里使用 full_backward_hook
@@ -65,8 +66,10 @@ class GradCAM:
         gradients = self.gradients
         activations = self.activations
         
-        # gradients = gradients.unsqueeze(0)######
-        # activations = activations.unsqueeze(0)######
+        # 针对 1D 特征分支的形状修正，仅在选择 spectra 层时启用
+        if self.require_1d_fix:
+            gradients = gradients.unsqueeze(0)
+            activations = activations.unsqueeze(0)
 
         b, k, *dims = gradients.size()
 
@@ -77,7 +80,9 @@ class GradCAM:
         weights = alpha.view(b, k, *([1]*len(dims)))
         cam = (weights * activations).sum(1, keepdim=True) # (B, 1, ...)
 
-        # cam = cam.permute(0, 1, 3, 2)########
+        # 仅在 1D 修正模式下做维度交换
+        if self.require_1d_fix:
+            cam = cam.permute(0, 1, 3, 2)
         # ReLU
         cam = F.relu(cam)
 
@@ -194,7 +199,8 @@ def run_cam_visualization(args,
                           alpha=0.5, 
                           bg_color=cv2.COLORMAP_OCEAN,
                           save_path="cam_result.png",
-                          model=None):
+                          model=None,
+                          target_kind='res'):
     """
     入口函数：
     args: 包含 root_path, batch_size 等参数的对象
@@ -255,7 +261,7 @@ def run_cam_visualization(args,
     
     
     # 加载权重
-    model_path = os.path.join('./1119', args.exp_name, 'model.pth')
+    model_path = os.path.join('./1111', args.exp_name, 'model.pth')
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path, map_location=device))
         print(f"[INFO] 成功加载权重: {model_path}")
@@ -269,25 +275,41 @@ def run_cam_visualization(args,
     # 针对你的 ResInc_SpAtt_Classifier
     # 我们通常想看 CNN 分支 (res_backbone) 的最后一层
     target_layer = None
+    require_1d_fix = False
     try:
-        # 尝试定位到 res_backbone 的最后一层
-        # 假设 F_cnn 结构中有 layer4 或 block
-        if hasattr(model.res_backbone, 'layer4'):
-             target_layer = model.res_backbone.layer4[-1]
-            #  target_layer = model.spectra_att.att.layer_norm
-        else:
-             # 如果没有 layer4，取 children 的最后一个
-             target_layer = list(model.res_backbone.children())[-1]
-        
-        # target_layer = model.att.layer_norm
-        # target_layer = model.semantic_head
+        if target_kind == 'spectra':
+            # 光谱注意力层 (1D 特征)
+            target_layer = model.spectra_att.att.layer_norm
+            require_1d_fix = True
+        elif target_kind == 'resnet18':
+            # 二维 ResNet18 分支：优先使用封装在模型中的 resnet18 子模块
+            if hasattr(model, 'resnet18') and hasattr(model.resnet18, 'layer4'):
+                target_layer = model.resnet18.layer4[-1]
+            elif hasattr(model, 'layer4'):
+                # 如果整个模型本身就是一个 ResNet18
+                target_layer = model.layer4[-1]
+            else:
+                raise AttributeError('未找到 ResNet18 的 layer4 模块')
+            require_1d_fix = False
+        else:  # 'res'
+            # 1D/主干分支
+            if hasattr(model, 'res_backbone'):
+                if hasattr(model.res_backbone, 'layer4'):
+                    target_layer = model.res_backbone.layer4[-1]
+                else:
+                    # 如果没有 layer4，取最后一个 child
+                    target_layer = list(model.res_backbone.children())[-1]
+            else:
+                raise AttributeError('模型不存在 res_backbone 属性')
+            require_1d_fix = False
+
         print(f"[INFO] Target Layer set to: {target_layer}")
     except Exception as e:
         print(f"[Error] 无法自动定位 Target Layer: {e}")
         return
 
     # 6. 运行 CAM
-    cam_engine = GradCAM(model, target_layer)
+    cam_engine = GradCAM(model, target_layer, require_1d_fix=require_1d_fix)
     mask = cam_engine(img_tensor, class_idx=label_idx) # 强制查看 Ground Truth 类别的热力图
     
     # 7. 图像合成与保存
@@ -360,6 +382,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=16) # 仅用于 loader 初始化，不影响 cam
     parser.add_argument('--ratio', type=float, default=1.0)
     parser.add_argument('--device', type=str, default='cuda:0')
+    parser.add_argument('--target_kind', type=str, choices=['res', 'spectra', 'resnet18'], default='res', help='选择用于 Grad-CAM 的目标层类型 (res: 主干, spectra: 光谱注意力, resnet18: 二维ResNet18)')
     
     args = parser.parse_args()
 
@@ -375,6 +398,7 @@ if __name__ == "__main__":
         alpha=0.4,               # 透明度：0.4 代表 heatmap 占 40%，底图占 60%
         bg_color=cv2.COLORMAP_OCEAN, # 蓝色调底图
         save_path="result_cam.png",
-        model = model
+        model = model,
+        target_kind=args.target_kind
     )
 

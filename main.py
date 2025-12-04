@@ -69,10 +69,10 @@ def main():
     parser.add_argument('--ratio', type=float, default=1, help='ratio')
 
     parser.add_argument('--mode', type=str, default='Test', choices=['Train', 'Test'], help='switch mode')
-    parser.add_argument('--exp_name', type=str, default='F_T_mini_gate_mulitloss_1119', help='the name of the experiment')
+    parser.add_argument('--exp_name', type=str, default='F_T_small_mulitloss_1122', help='the name of the experiment')
 
     parser.add_argument('--class_num', type=int, default=10, help='class number')
-    parser.add_argument('--model', type=str, default='F_T_mini_gate_mulitloss_1119', help='switch model')
+    parser.add_argument('--model', type=str, default='F_T_small_mulitloss_1122', help='switch model')
     # parser.add_argument('--root_path', type=str, default='/root/autodl-tmp/data_set_5e6', help='dataset path')
     # parser.add_argument('--root_path', type=str, default='/media/lab125/SSD11/D00/data_set_5e6', help='dataset path')
     parser.add_argument('--root_path', type=str, default='/home/kk/D00/data_set_5e6', help='dataset path')
@@ -90,6 +90,7 @@ def main():
     # set_seed(int(getattr(args, 'seed', 42)))
 
     folder_path = './final_results/' + str(args.seed) + '/'  + args.exp_name
+    # folder_path = '1119' + '/'  + args.exp_name
     if not os.path.exists(folder_path):# if the folder does not exist, than create it
         os.makedirs(folder_path)
 

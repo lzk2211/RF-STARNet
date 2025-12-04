@@ -48,22 +48,11 @@ class CustomDataset(Dataset):
 
         if not isinstance(image, torch.Tensor):
             image = torch.from_numpy(np.asarray(image))
-   
-        # 经过 RPCA 分解：得到低秩部分 L 与稀疏部分 S
-        # 注意：为了兼容当前模型的输入通道数(in_channels=1)，这里将 L 与 S 沿宽度维度拼接，形成 [1, H, 2W]
-        # 若未来希望改为 2 通道输入，可将下面的 dim=2 改为 dim=0，并相应调整模型第一层卷积的 in_channels=2
-        # if _HAS_RPCA and rpca_decompose is not None:
-        #     try:
-        #         L, S = rpca_decompose(image, verbose=False)
-        #         # 保持数值类型
-        #         L = L.to(dtype=image.dtype)
-        #         S = S.to(dtype=image.dtype)
-        #         # 沿宽度拼接，维度：[1, H, 2W]
-        #         # image = torch.cat([L, S], dim=2)
-        #     except Exception as e:
-        #         # RPCA 失败则回退为原图
-        #         print(f"[WARN] RPCA failed for {sample_file}: {e}. Fallback to original image.")
 
+        # # image[:, :16, :] = 0
+        # # image[:, -16:, :] = 0
+        # image = image[:, 64:-64, :]
+        # image = transforms.Resize((512, 512))(image)
 
         return image, sample_labels, snr
 
