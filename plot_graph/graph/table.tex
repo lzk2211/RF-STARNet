@@ -1,0 +1,105 @@
+\begin{table*}[htbp]
+    \centering
+    \caption{\textbf{Comprehensive Analysis: Ablation Study \& Performance Comparison (Small Scale Focus).} 
+    Part I details the impact of specific modules on the Small architecture relative to the baseline.
+    Part II compares our final models against state-of-the-art methods.
+    Note: Intermediate ablation steps without available inference data are marked with `-`.
+    MEI is calculated as $Acc / \log(Params \times MACs)$.}
+    \label{tab:combined_analysis}
+    
+    % Use resizebox to fit the table width if necessary
+    \resizebox{\textwidth}{!}{
+    \setlength{\tabcolsep}{3.5pt}
+    \renewcommand{\arraystretch}{1.25}
+    
+    \begin{tabular}{lcccccccc}
+        \toprule
+        \multirow{2}{*}{\textbf{Model / Configuration}} & \textbf{Avg Acc} & \textbf{Params} & \textbf{MACs} & \textbf{MEI} & \textbf{GPU Infer.} & \textbf{CPU Infer.} & \textbf{Memory} & \textbf{Train Cost} \\
+         & \textbf{(\%)} & \textbf{(M)} & \textbf{(M)} & \textbf{(Score)} & \textbf{Time (s)} & \textbf{Time (s)} & \textbf{(MB)} & \textbf{(GPU/h)} \\
+        \toprule
+        \multicolumn{9}{c}{\textsc{Part I: Module Ablation Study}} \\
+        \midrules
+        % ================= HARNet =================
+        \multicolumn{9}{l}{\textit{\textbf{1. HARNet Architecture}}} \\
+        \quad Baseline & 69.43 & 0.019 & 0.59 & 6.90 & 4.68 & 6.49 & 1.21 & 37min/0.62 \\
+        \quad w/ SE Block & 70.29 \valup{0.86\%} & 0.031 & 0.68 & 6.81 \valdown{1.30\%} & 4.56 & 6.44 & 1.21 & 36min/0.60 \\
+        \quad w/ MRFSM & 72.53 \valup{3.10\%} & 0.019 & 0.59 & \textbf{7.21} \valup{4.49\%} & 4.62 & 6.87 & 1.20 & 46min/0.76\\
+        \quad \textbf{HARNet (Ours)} & \textbf{77.81} \valup{8.38\%} & 0.111 & 2.01 & 6.86 \valdown{0.58\%} & 4.54 & 7.13 & 1.29 & 36min/0.60 \\
+        \midrule
+        % ================= SSTA =================
+        \multicolumn{9}{l}{\textit{\textbf{2. SSTA Architecture}}} \\
+        \quad Baseline & 74.18 & 0.550 & 273.70 & 5.23 & 3.66 & 19.63 & 7.44 & 57min/0.95 \\
+        \quad Abs. Pos. Enc. & 30.81 \valdown{43.37\%} & 0.042 & 1.75 & 2.83 \valdown{45.89\%} & 4.76 & 21.74 & 1.78 & 27min/0.45 \\
+        \quad w/ Stem & 74.33 \valup{0.15\%} & 0.550 & 34.26 & 5.60 \valup{7.07\%} & 4.55 & 7.69 & 1.93 & 47min/0.78 \\
+        \quad w/ Grouped & 75.21 \valup{1.03\%} & 0.042 & 13.65 & 6.40 \valup{22.37\%} & 7.06 & 287.63 & 6.86 & 3.19 \\
+        \quad \textbf{SSTA (Ours)} & \textbf{75.79} \valup{1.61\%} & 0.042 & 1.75 & \textbf{6.97} \valup{33.27\%} & 4.52 & 14.91 & 1.79 & 22min/0.37 \\
+        \midrule
+        % ================= Fusion / H-starNet =================
+        \multicolumn{9}{l}{\textit{\textbf{3. H-starNet (Fusion) Architecture}}} \\
+        \quad Baseline & 78.89 & 0.144 & 3.75 & 6.72 & 4.81 & 19.02 & 1.80 & 44min/0.73 \\
+        \quad w/ Gating Mechanism & 80.41 \valup{1.52\%} & 0.177 & 3.79 & 6.80 \valup{1.19\%} & 4.71 & 27.16 & 1.80 & 43min/0.72 \\
+        \quad w/ Multi-Loss & 79.32 \valup{0.43\%} & 0.154 & 3.76 & 6.74 \valup{0.30\%} & 4.72 & 17.18 & 1.93 & 1.38 \\
+        \quad \textbf{H-starNet (Ours)} & \textbf{81.44} \valup{2.55\%} & 0.188 & 3.80 & 6.87 \valup{2.23\%} & 3.65 & 19.12 & 1.80 & 1.07 \\
+        \toprule
+        \multicolumn{9}{c}{\textsc{Part II: Benchmark Comparison}} \\
+        \midrule
+        \textit{Comparison Methods} & & & & & & & & \\
+        \quad MobileNetV3-Small & 77.36 & 0.930 & 316.03 & 5.35 & 5.67 & - & 14.19 & - \\
+        \quad ResNet18 & 76.11 & 11.180 & 9115.93 & 4.48 & 15.21 & - & 34.59 & - \\
+        \quad 1D-LW-ResNet18 & 73.92 & 0.135 & 3.54 & 6.33 & 3.51 & 7.22 & 1.29 & - \\
+        \quad S3R & 72.04 & 34.530 & 547.85 & 4.43 & 10.93 & - & 11.26 & - \\
+        % \midrule
+        % \textit{Selected Ours (Summary)} & & & & & & & & \\
+        % \quad \textbf{HARNet-Nano} & 68.72 & 0.006 & 0.16 & \textbf{7.65} & 3.42 & 6.42 & 1.15 & 0.903 \\
+        % \quad \textbf{H-starNet-Nano} & 76.75 & 0.035 & 0.26 & 7.71 & 3.82 & 16.42 & 1.21 & 0.614 \\
+        % \quad \textbf{H-starNet-Small} & \textbf{81.44} & 0.187 & 3.80 & 6.87 & 3.46 & 18.44 & 1.80 & 0.833 \\
+        \bottomrule
+    \end{tabular}
+    }
+\end{table*}
+
+
+
+\begin{table*}[htbp]
+    \centering
+    \caption{Performance Comparison of Different Models. (Note: MACs and Params are scaled to Millions. MEI is calculated based on raw unit values. Total Cost is reserved for future data.)}
+    \label{tab:model_comparison}
+    \setlength{\tabcolsep}{5pt} % 稍微减小列间距以容纳新列
+    \renewcommand{\arraystretch}{1.2} % 调整行高
+    \begin{tabular}{lccccccccc} % 增加了一列 c
+        \toprule
+        \textbf{Model} & \textbf{Avg Acc} & \textbf{Params} & \textbf{MACs} & \textbf{MEI} & \textbf{GPU Infer.} & \textbf{CPU Infer.} & \textbf{Memory} & \textbf{Train Cost} \\
+         & \textbf{(\%)} & \textbf{(M)} & \textbf{(M)} & \textbf{(Score)} & \textbf{Time (s)} & \textbf{Time (s)} & \textbf{(MB)} & \textbf{(GPU/h)} \\
+        \midrule
+        \textit{HARNet (Ours)} & & & & & & & & \\
+        \quad Nano  & 68.72 & 0.006 & 0.16 & \textbf{7.65} & 3.42 & 6.42 & 1.15 & 0.903\\
+        \quad Mini  & 71.67 & 0.013 & 0.34 & 7.43 & 3.43 & 5.78 & 1.17 & 0.986\\
+        \quad Tiny  & 75.94 & 0.031 & 0.68 & 7.36 & 3.53 & 6.54 & 1.20 & 0.836\\
+        \quad Small & \textbf{77.81} & 0.111 & 2.01 & 6.86 & 3.45 & 6.51 & 1.29 & 0.783\\
+        % \quad Base  & \textbf{78.36} & 0.222 & 3.69 & & 3.44 & 8.24 & 1.30 & 0.776\\
+        % \quad Large & 76.34 & 0.405 & 7.20 & & 3.57 & 10.08 & 1.31 & 0.830\\
+        \midrule
+        \textit{SSTA (Ours)} & & & & & & & & \\
+        \quad Nano  & 61.42 & 0.009 & 0.07 & 6.98 & 3.82 & 17.72 & 1.21 & 0.815\\
+        \quad Mini  & 71.82 & 0.018 & 0.24 & 7.45 & 3.51 & 14.45 & 1.29 & 1.211\\
+        \quad Tiny  & 75.51 & 0.022 & 0.48 & \textbf{7.54} & 3.59 & 22.37 & 1.45 & 1.211\\
+        \quad Small & \textbf{77.78} & 0.042 & 1.75 & 7.16 & 3.42 & 15.04 & 1.79 & 0.808\\
+        % \quad Base  & \textbf{78.54} & 0.084 & 3.34 & & 3.48 & 11.36 & 1.79 & 0.499\\
+        % \quad Large & 77.78 & 0.166 & 3.29 & & 3.44 & 7.50 & 1.47 & 0.534\\
+        \midrule
+        \textit{H-starNet (Ours)} & & & & & & & & \\
+        \quad Nano  & 76.75 & 0.035 & 0.26 & \textbf{7.71} & 3.82 & 16.42 & 1.21 & 0.614 \\
+        \quad Mini  & 79.26 & 0.050 & 0.60 & 7.57 & 3.64 & 15.96 & 1.29 & 1.099\\
+        \quad Tiny  & 79.21 & 0.072 & 1.19 & 7.25 & 3.79 & 21.49 & 1.40 & 0.712\\
+        \quad Small & \textbf{81.44} & 0.187 & 3.80 & 6.87 & 3.46 & 18.44 & 1.80 & 0.833\\
+        % \quad Base  & 76.84 & 0.313 & 7.05 & & 3.51 & 13.28 & 1.81 & 0.860\\
+        % \quad Large & 77.84 & 0.555 & 10.48 & & 3.73 & 9.72 & 1.66 & \\
+        \midrule
+        \textit{Comparison Methods} & & & & & & & & \\
+        \quad S3R & 72.04 & 34.53 & 547.85 & 4.43 & 10.93 & - & 11.26 & \\
+        \quad MobileNetV3-Small & 77.36 & 0.93 & 316.03 & 5.35 & 5.67 & - & 14.19 & \\
+        \quad ResNet18 & 76.11 & 11.18 & 9115.93 & 4.48 & 15.21 & - & 34.59 & \\
+        \quad 1D-LW-ResNet18  & 73.92 & 0.135 & 3.54 & 6.33 & 3.51 & 7.22 & 1.29 & \\
+        \bottomrule
+    \end{tabular}
+\end{table*}
