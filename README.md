@@ -127,233 +127,32 @@ Performance comparison on DroneRFa dataset (Avg Accuracy vs. Efficiency):
 
 **Table Caption:** Part I details the impact of specific modules on the Small architecture relative to the baseline. Part II compares our final models against state-of-the-art methods. MEI is calculated as $Acc / \log(Params \times MACs)$.
 
-<table>
-    <caption>
-        <strong>Comprehensive Analysis: Ablation Study & Performance Comparison (Small Scale Focus).</strong><br>
-        Part I details the impact of specific modules on the Small architecture relative to the baseline.
-        Part II compares our final models against state-of-the-art methods.<br>
-        <em>MEI is calculated as Acc / log(Params * MACs).</em>
-    </caption>
-    <thead>
-        <tr>
-            <th style="text-align:left;">Model / Configuration</th>
-            <th style="text-align:center;">Avg Acc<br>(%)</th>
-            <th style="text-align:center;">Params<br>(M)</th>
-            <th style="text-align:center;">MACs<br>(M)</th>
-            <th style="text-align:center;">MEI<br>(Score)</th>
-            <th style="text-align:center;">GPU Infer.<br>Time (s)</th>
-            <th style="text-align:center;">CPU Infer.<br>Time (s)</th>
-            <th style="text-align:center;">Memory<br>(MB)</th>
-            <th style="text-align:center;">Train Cost<br>(GPU/h)</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td colspan="9" style="text-align:center; background-color:#f6f8fa; font-weight:bold;">
-                Part I: Module Ablation Study
-            </td>
-        </tr>
-        
-        <tr><td colspan="9" style="text-align:left; font-style:italic;"><strong>1. HARNet Architecture</strong></td></tr>
-        <tr>
-            <td>Baseline</td>
-            <td align="center">69.43</td>
-            <td align="center">0.019</td>
-            <td align="center">0.59</td>
-            <td align="center">6.90</td>
-            <td align="center">4.68</td>
-            <td align="center">6.49</td>
-            <td align="center">1.21</td>
-            <td align="center">0.62</td>
-        </tr>
-        <tr>
-            <td>w/ SE Block</td>
-            <td align="center">70.29 (+0.86%)</td>
-            <td align="center">0.031</td>
-            <td align="center">0.68</td>
-            <td align="center">6.81 (-1.30%)</td>
-            <td align="center">4.56</td>
-            <td align="center">6.44</td>
-            <td align="center">1.21</td>
-            <td align="center">0.60</td>
-        </tr>
-        <tr>
-            <td>w/ MRFSM</td>
-            <td align="center">72.53 (+3.10%)</td>
-            <td align="center">0.019</td>
-            <td align="center">0.59</td>
-            <td align="center"><strong>7.21</strong> (+4.49%)</td>
-            <td align="center">4.62</td>
-            <td align="center">6.87</td>
-            <td align="center">1.20</td>
-            <td align="center">0.76</td>
-        </tr>
-        <tr>
-            <td><strong>HARNet (Ours)</strong></td>
-            <td align="center"><strong>77.81</strong> (+8.38%)</td>
-            <td align="center">0.111</td>
-            <td align="center">2.01</td>
-            <td align="center">6.86 (-0.58%)</td>
-            <td align="center">4.54</td>
-            <td align="center">7.13</td>
-            <td align="center">1.29</td>
-            <td align="center">0.60</td>
-        </tr>
+| Model / Configuration | Avg Acc (%) | Params (M) | MACs (M) | MEI (Score) | GPU Infer. Time (s) | CPU Infer. Time (s) | Memory (MB) | Train Cost (GPU/h) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Part I: Module Ablation Study** | | | | | | | | |
+| *1. HARNet Architecture* | | | | | | | | |
+| Baseline | 69.43 | 0.019 | 0.59 | 6.90 | 4.68 | 6.49 | 1.21 | 0.62 |
+| w/ SE Block | 70.29 (+0.86%) | 0.031 | 0.68 | 6.81 (-1.30%) | 4.56 | 6.44 | 1.21 | 0.60 |
+| w/ MRFSM | 72.53 (+3.10%) | 0.019 | 0.59 | **7.21** (+4.49%) | 4.62 | 6.87 | 1.20 | 0.76 |
+| **HARNet (Ours)** | **77.81** (+8.38%) | 0.111 | 2.01 | 6.86 (-0.58%) | 4.54 | 7.13 | 1.29 | 0.60 |
+| *2. SSTA Architecture* | | | | | | | | |
+| Baseline | 74.18 | 0.550 | 273.70 | 5.23 | 3.66 | 19.63 | 7.44 | 0.95 |
+| Abs. Pos. Enc. | 30.81 (-43.37%) | 0.042 | 1.75 | 2.83 (-45.89%) | 4.76 | 21.74 | 1.78 | 0.45 |
+| w/ Stem | 74.33 (+0.15%) | 0.550 | 34.26 | 5.60 (+7.07%) | 4.55 | 7.69 | 1.93 | 0.78 |
+| w/ Grouped | 75.21 (+1.03%) | 0.042 | 13.65 | 6.40 (+22.37%) | 7.06 | 287.63 | 6.86 | 3.19 |
+| **SSTA (Ours)** | **75.79** (+1.61%) | 0.042 | 1.75 | **6.97** (+33.27%) | 4.52 | 14.91 | 1.79 | 0.37 |
+| *3. H-starNet (Fusion) Architecture* | | | | | | | | |
+| Baseline | 78.89 | 0.144 | 3.75 | 6.72 | 4.81 | 19.02 | 1.80 | 0.73 |
+| w/ Gating Mechanism | 80.41 (+1.52%) | 0.177 | 3.79 | 6.80 (+1.19%) | 4.71 | 27.16 | 1.80 | 0.72 |
+| w/ Multi-Loss | 79.32 (+0.43%) | 0.154 | 3.76 | 6.74 (+0.30%) | 4.72 | 17.18 | 1.93 | 1.38 |
+| **H-starNet (Ours)** | **81.44** (+2.55%) | 0.188 | 3.80 | **6.87** (+2.23%) | 3.65 | 19.12 | 1.80 | 1.07 |
+| **Part II: Benchmark Comparison** | | | | | | | | |
+| *Comparison Methods* | | | | | | | | |
+| MobileNetV3-Small | 77.36 | 0.930 | 316.03 | 5.35 | 5.67 | - | 14.19 | - |
+| ResNet18 | 76.11 | 11.180 | 9115.93 | 4.48 | 15.21 | - | 34.59 | - |
+| 1D-LW-ResNet18 | 73.92 | 0.135 | 3.54 | 6.33 | 3.51 | 7.22 | 1.29 | - |
+| S3R | 72.04 | 34.530 | 547.85 | 4.43 | 10.93 | - | 11.26 | - |
 
-        <tr><td colspan="9" style="text-align:left; font-style:italic;"><strong>2. SSTA Architecture</strong></td></tr>
-        <tr>
-            <td>Baseline</td>
-            <td align="center">74.18</td>
-            <td align="center">0.550</td>
-            <td align="center">273.70</td>
-            <td align="center">5.23</td>
-            <td align="center">3.66</td>
-            <td align="center">19.63</td>
-            <td align="center">7.44</td>
-            <td align="center">0.95</td>
-        </tr>
-        <tr>
-            <td>Abs. Pos. Enc.</td>
-            <td align="center">30.81 (-43.37%)</td>
-            <td align="center">0.042</td>
-            <td align="center">1.75</td>
-            <td align="center">2.83 (-45.89%)</td>
-            <td align="center">4.76</td>
-            <td align="center">21.74</td>
-            <td align="center">1.78</td>
-            <td align="center">0.45</td>
-        </tr>
-        <tr>
-            <td>w/ Stem</td>
-            <td align="center">74.33 (+0.15%)</td>
-            <td align="center">0.550</td>
-            <td align="center">34.26</td>
-            <td align="center">5.60 (+7.07%)</td>
-            <td align="center">4.55</td>
-            <td align="center">7.69</td>
-            <td align="center">1.93</td>
-            <td align="center">0.78</td>
-        </tr>
-        <tr>
-            <td>w/ Grouped</td>
-            <td align="center">75.21 (+1.03%)</td>
-            <td align="center">0.042</td>
-            <td align="center">13.65</td>
-            <td align="center">6.40 (+22.37%)</td>
-            <td align="center">7.06</td>
-            <td align="center">287.63</td>
-            <td align="center">6.86</td>
-            <td align="center">3.19</td>
-        </tr>
-        <tr>
-            <td><strong>SSTA (Ours)</strong></td>
-            <td align="center"><strong>75.79</strong> (+1.61%)</td>
-            <td align="center">0.042</td>
-            <td align="center">1.75</td>
-            <td align="center"><strong>6.97</strong> (+33.27%)</td>
-            <td align="center">4.52</td>
-            <td align="center">14.91</td>
-            <td align="center">1.79</td>
-            <td align="center">0.37</td>
-        </tr>
-
-        <tr><td colspan="9" style="text-align:left; font-style:italic;"><strong>3. H-starNet (Fusion) Architecture</strong></td></tr>
-        <tr>
-            <td>Baseline</td>
-            <td align="center">78.89</td>
-            <td align="center">0.144</td>
-            <td align="center">3.75</td>
-            <td align="center">6.72</td>
-            <td align="center">4.81</td>
-            <td align="center">19.02</td>
-            <td align="center">1.80</td>
-            <td align="center">0.73</td>
-        </tr>
-        <tr>
-            <td>w/ Gating Mechanism</td>
-            <td align="center">80.41 (+1.52%)</td>
-            <td align="center">0.177</td>
-            <td align="center">3.79</td>
-            <td align="center">6.80 (+1.19%)</td>
-            <td align="center">4.71</td>
-            <td align="center">27.16</td>
-            <td align="center">1.80</td>
-            <td align="center">0.72</td>
-        </tr>
-        <tr>
-            <td>w/ Multi-Loss</td>
-            <td align="center">79.32 (+0.43%)</td>
-            <td align="center">0.154</td>
-            <td align="center">3.76</td>
-            <td align="center">6.74 (+0.30%)</td>
-            <td align="center">4.72</td>
-            <td align="center">17.18</td>
-            <td align="center">1.93</td>
-            <td align="center">1.38</td>
-        </tr>
-        <tr>
-            <td><strong>H-starNet (Ours)</strong></td>
-            <td align="center"><strong>81.44</strong> (+2.55%)</td>
-            <td align="center">0.188</td>
-            <td align="center">3.80</td>
-            <td align="center"><strong>6.87</strong> (+2.23%)</td>
-            <td align="center">3.65</td>
-            <td align="center">19.12</td>
-            <td align="center">1.80</td>
-            <td align="center">1.07</td>
-        </tr>
-
-        <tr>
-            <td colspan="9" style="text-align:center; background-color:#f6f8fa; font-weight:bold;">
-                Part II: Benchmark Comparison
-            </td>
-        </tr>
-        <tr>
-            <td>MobileNetV3-Small [b7]</td>
-            <td align="center">77.36</td>
-            <td align="center">0.930</td>
-            <td align="center">316.03</td>
-            <td align="center">5.35</td>
-            <td align="center">5.67</td>
-            <td align="center">-</td>
-            <td align="center">14.19</td>
-            <td align="center">-</td>
-        </tr>
-        <tr>
-            <td>ResNet18</td>
-            <td align="center">76.11</td>
-            <td align="center">11.180</td>
-            <td align="center">9115.93</td>
-            <td align="center">4.48</td>
-            <td align="center">15.21</td>
-            <td align="center">-</td>
-            <td align="center">34.59</td>
-            <td align="center">-</td>
-        </tr>
-        <tr>
-            <td>1D-LW-ResNet18 [b8]</td>
-            <td align="center">73.92</td>
-            <td align="center">0.135</td>
-            <td align="center">3.54</td>
-            <td align="center">6.33</td>
-            <td align="center">3.51</td>
-            <td align="center">7.22</td>
-            <td align="center">1.29</td>
-            <td align="center">-</td>
-        </tr>
-        <tr>
-            <td>S3R [b6]</td>
-            <td align="center">72.04</td>
-            <td align="center">34.530</td>
-            <td align="center">547.85</td>
-            <td align="center">4.43</td>
-            <td align="center">10.93</td>
-            <td align="center">-</td>
-            <td align="center">11.26</td>
-            <td align="center">-</td>
-        </tr>
-    </tbody>
-</table>
 ## 🔬 Analysis & Visualization
 
 To investigate the internal working mechanism of H-starNet, we provide detailed visualizations of feature activation and error distribution.
