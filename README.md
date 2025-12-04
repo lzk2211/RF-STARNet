@@ -1,6 +1,13 @@
-<h1 align="center">SRSpecNet: Spectral Super-Resolution and Reconstruction Network</h1>
+<h1 align="center">Harmony in Time and Frequency: Lightweight Spectro-Temporal Disentanglement for UAV RF Fingerprinting</h1>
 
 <div align="center">
+
+[Zhenkun Liu](https://github.com/lzk2211),
+[Yunling Liao](https://github.com/FishSkin2002),
+[Zhiyv Dai](https://github.com/krismiledy) and 
+[JunSheng Mu](https://scholar.google.com/citations?hl=zh-CN&user=ikS5u98AAAAJ)
+
+Beijing University of Posts & Telecommunications.
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-929292)](./LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](#installation)
@@ -10,9 +17,11 @@
 </div>
 
 <div align="center">
-
-<img src="assets/demo.gif" width="800" alt="SRSpecNet demo">
-
+  <a href="graph/nn.pdf" target="_blank">
+    <img src="graph/nn.jpg" width="800" alt="点击查看PDF">
+  </a>
+  <br>
+  <!-- <p>点击上方图片或 <a href="assets/your_document.pdf">此处</a> 查看完整 PDF</p> -->
 </div>
 
 ## 📣 News
