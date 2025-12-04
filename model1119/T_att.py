@@ -412,3 +412,15 @@ if __name__ == "__main__":
         inputs = torch.randn(1, 1, 512, 512).to(device) # 1D 频谱向量
         flops, params = profile(model, (inputs,), verbose=False)
         print(name, 'flops: ', flops, 'params: ', params)
+
+    model = T_att_small(freq_bins=512, seq_len=512, num_classes=10).to(device)
+    dummy_input = torch.randn(1, 1, 512, 512).to(device)
+
+    # 4. 导出为 ONNX
+    torch.onnx.export(model,               # 你要导出的模型
+                    dummy_input,         # 一个示例输入
+                    "model.onnx",        # 导出的文件名
+                    input_names=['input'], # 可选：指定输入名
+                    output_names=['output']) # 可选：指定输出名
+
+    print("模型已成功导出为 model.onnx")

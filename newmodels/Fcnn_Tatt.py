@@ -4,9 +4,10 @@ from typing import Optional
 
 # 注意：Res_Inc_Net.py 在导入时包含FLOPs测试代码；该仓库已在其他位置导入过它。
 # 这里仍按常规方式导入其工厂函数与结构，供骨干网络使用。
-from model.Res_Inc_Net import Res_Inc_Net_base
-from model.SpectraAtt_noProjected import GroupedProjectedAttentionRF
-
+from newmodels.Res_Inc_Net import Res_Inc_Net_small
+from newmodels.T_att import rf_att_tiny
+# from Res_Inc_Net import Res_Inc_Net_small
+# from T_att import rf_att_tiny
 
 class ResInc_SpAtt_Classifier(nn.Module):
 	"""
@@ -44,19 +45,16 @@ class ResInc_SpAtt_Classifier(nn.Module):
 		# 分支A: 1D ResNet 骨干（不含顶层分类头）
 		# include_top=False 时，forward 返回 layer4 的特征图 (B, C_res, L_res)
 		assert use_resinc_variant == "base", "当前实现使用 Res_Inc_Net_base，可按需扩展"
-		self.res_backbone = Res_Inc_Net_base(num_classes=num_classes, include_top=False)
+		self.res_backbone = Res_Inc_Net_small(num_classes=num_classes, include_top=False)
 		self.res_pool = nn.AdaptiveAvgPool1d(1)  # (B, C_res, L_res) -> (B, C_res, 1)
 
 		# 分支B: 频谱注意力 (直接使用注意力层而非分类器，便于抽取特征)
-		self.spectra_att = GroupedProjectedAttentionRF(
-			freq_bins=freq_bins,
-			att_dim=att_dim,
-			groups=groups,
-			seq_len=seq_len,
-			k_len=k_len,
-			use_pos=True,
-			dropout=dropout,
-		)
+		self.spectra_att = rf_att_tiny(
+			freq_bins=512, 
+			seq_len=512, 
+			num_classes=num_classes, 
+			include_top=False # <-- 测试 False
+		).to(device)
 
 		# 维度推断：
 		# - Res 分支通道数：对于 base(2,2,2,2)+BasicBlock，最终 C_res 通常为 512
@@ -68,13 +66,13 @@ class ResInc_SpAtt_Classifier(nn.Module):
 		if hidden_dim is None:
 			hidden_dim = max(256, feat_dim // 2)
 
+		# 轻量分类头：参数显著减少（LN + Dropout + Linear）
+		# 原结构为两层全连接（feat_dim->hidden_dim->num_classes），参数较多；
+		# 现改为单层线性头，通常已足够应对拼接后的高维特征。
 		self.classifier = nn.Sequential(
 			nn.LayerNorm(feat_dim),
 			nn.Dropout(dropout),
-			nn.Linear(feat_dim, hidden_dim),
-			nn.ReLU(inplace=True),
-			nn.Dropout(dropout),
-			nn.Linear(hidden_dim, num_classes),
+			nn.Linear(feat_dim, num_classes),
 		)
 
 	def forward(self, x: torch.Tensor, return_features: bool = False) -> torch.Tensor:
@@ -93,6 +91,9 @@ class ResInc_SpAtt_Classifier(nn.Module):
 		sp_map = self.spectra_att(x)  # (B, F, T)
 		sp_feat = sp_map.mean(dim=-1)  # (B, F)
 
+		# sp_feat = torch.zeros_like(sp_feat)
+		# res_feat = torch.zeros_like(res_feat)
+
 		# 拼接特征
 		feat = torch.cat([res_feat, sp_feat], dim=-1)  # (B, C_res + F)
 
@@ -103,7 +104,7 @@ class ResInc_SpAtt_Classifier(nn.Module):
 		return logits
 
 
-def ResInc_SpAtt(num_classes: int = 25,
+def F_T(num_classes: int = 25,
 				 freq_bins: int = 512,
 				 seq_len: int = 128,
 				 groups: int = 8,
@@ -124,12 +125,12 @@ def ResInc_SpAtt(num_classes: int = 25,
 		hidden_dim=hidden_dim,
 	)
 
-if False:
+if True:
 	from torchsummary import summary
 	from thop import profile
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-	model = ResInc_SpAtt(num_classes=10)
+	model = F_T(num_classes=10)
 	model = model.to(device)
 
 	# summary(model, input_size=(1, 512))

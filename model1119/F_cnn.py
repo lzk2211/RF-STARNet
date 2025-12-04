@@ -362,3 +362,15 @@ if __name__ == "__main__":
         flops, params = profile(model, (inputs,), verbose=False)
         print(name, 'flops: ', flops, 'params: ', params)
 
+
+    model = F_cnn_small(num_classes=10, include_top=True).to(device)
+    dummy_input = torch.randn(1, 1, 512, 512).to(device)
+
+    # 4. 导出为 ONNX
+    torch.onnx.export(model,               # 你要导出的模型
+                    dummy_input,         # 一个示例输入
+                    "model.onnx",        # 导出的文件名
+                    input_names=['input'], # 可选：指定输入名
+                    output_names=['output']) # 可选：指定输出名
+
+    print("模型已成功导出为 model.onnx")

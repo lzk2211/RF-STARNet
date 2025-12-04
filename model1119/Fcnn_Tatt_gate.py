@@ -46,17 +46,17 @@ class ResInc_SpAtt_Classifier(nn.Module):
 		self.mode = mode
 
 		if use_resinc_variant == 'large':
-			F_cnn = F_cnn_base
-			T_att = T_att_base
+			F_cnn = F_cnn_large
+			T_att = T_att_large
 			C_res = 512
 		elif use_resinc_variant == 'base':
 			F_cnn = F_cnn_base
 			T_att = T_att_base
 			C_res = 512
 		elif use_resinc_variant == 'small':
-			F_cnn = F_cnn_tiny
-			T_att = T_att_tiny
-			C_res = 256
+			F_cnn = F_cnn_small
+			T_att = T_att_small
+			C_res = 512
 		elif use_resinc_variant == 'tiny':
 			F_cnn = F_cnn_tiny
 			T_att = T_att_tiny

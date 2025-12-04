@@ -270,7 +270,7 @@ def Res_Inc_Net_101(num_classes: int = 1000, include_top: bool = True):
 # from thop import profile
 # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# model = Res_Inc_Net_50(num_classes=10, include_top=True)
+# model = Res_Inc_Net_base(num_classes=10, include_top=True)
 # model = model.to(device)
 
 # # summary(model, input_size=(1, 512))

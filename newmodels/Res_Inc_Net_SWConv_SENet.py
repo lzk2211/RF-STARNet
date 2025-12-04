@@ -359,17 +359,18 @@ def SW_Res_Inc_Net_101(num_classes: int = 1000, include_top: bool = True, n_div:
         layers=(3, 4, 23, 3), base_channels=64, dropout=0.5, n_div=n_div)
 
 
-# from torchsummary import summary
-# from thop import profile
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+if True:
+    from torchsummary import summary
+    from thop import profile
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# # ### 修改 ###: 使用您指定的 4D 输入
-# # (Batch, Channels, Height, Width) 或 (B, C, F, T)
-# inputs = torch.randn(1, 1, 512, 512).to(device) 
+    # ### 修改 ###: 使用您指定的 4D 输入
+    # (Batch, Channels, Height, Width) 或 (B, C, F, T)
+    inputs = torch.randn(1, 1, 512, 512).to(device) 
 
-# print("\n--- SW-Conv ResNet-50 (SW_Bottleneck1D, n_div=4) ---")
-# model_sw_50 = SW_Res_Inc_Net_base(num_classes=10, include_top=True, n_div=4).to(device)
-# # 使用 4D 输入测试
-# flops_sw_50, params_sw_50 = profile(model_sw_50, (inputs,), verbose=False)
-# print(f'Flops: {flops_sw_50/1e9:.2f} G, Params: {params_sw_50/1e6:.2f} M')
-# print(f'  (输入 {tuple(inputs.shape)} -> .mean(dim=-1) -> {tuple(inputs.mean(dim=-1).shape)})')
+    print("\n--- SW-Conv ResNet-50 (SW_Bottleneck1D, n_div=4) ---")
+    model_sw_50 = SW_Res_Inc_Net_base(num_classes=10, include_top=True, n_div=4).to(device)
+    # 使用 4D 输入测试
+    flops_sw_50, params_sw_50 = profile(model_sw_50, (inputs,), verbose=False)
+    print(f'Flops: {flops_sw_50} , Params: {params_sw_50} ')
+    print(f'  (输入 {tuple(inputs.shape)} -> .mean(dim=-1) -> {tuple(inputs.mean(dim=-1).shape)})')

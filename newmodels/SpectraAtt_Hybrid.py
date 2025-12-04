@@ -291,8 +291,30 @@ class RFProjectedAttentionClassifier(nn.Module):
 # ---------------------------------------------------------------------------
 # 这些工厂函数现在会自动创建使用 Hybrid 模块的分类器
 # 您可以通过 kwargs 传递 local_kernel_size 来覆盖默认值 (e.g., local_kernel_size=11)
+def rf_att_tiny(freq_bins: int, seq_len: int, num_classes: int, 
+                **kwargs): # <-- 【改动】include_top 成为显式参数
+    """
+    创建 'tiny' 版本：G=64, att_dim=4, hidden_dim=16。
+    """
+    config = {
+        'groups': 64,
+        'att_dim': 4,
+        'hidden_dim': 16,
+        'dropout': 0.1
+    }
+    
+    # 允许 kwargs 覆盖默认配置 (例如 dropout=0.0)
+    config.update(kwargs) 
+    
+    return RFProjectedAttentionClassifier(
+        freq_bins=freq_bins,
+        seq_len=seq_len,
+        num_classes=num_classes,
+        # stem_pool_factor=stem_pool_factor,
+        **config
+    )
 
-def rf_projected_attention_small(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
+def rf_att_small(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
     config = {
         'groups': 8,      
         'att_dim': 16,    
@@ -306,7 +328,7 @@ def rf_projected_attention_small(freq_bins: int, seq_len: int, num_classes: int,
         freq_bins=freq_bins, seq_len=seq_len, num_classes=num_classes, **config
     )
 
-def rf_projected_attention_medium(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
+def rf_att_medium(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
     config = {
         'groups': 8,
         'att_dim': 32,
@@ -320,7 +342,7 @@ def rf_projected_attention_medium(freq_bins: int, seq_len: int, num_classes: int
         freq_bins=freq_bins, seq_len=seq_len, num_classes=num_classes, **config
     )
 
-def rf_projected_attention_large(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
+def rf_att_large(freq_bins: int, seq_len: int, num_classes: int, **kwargs):
     config = {
         'groups': 8,
         'att_dim': 64,
@@ -337,32 +359,19 @@ def rf_projected_attention_large(freq_bins: int, seq_len: int, num_classes: int,
 # ---------------------------------------------------------------------------
 #  测试代码
 # ---------------------------------------------------------------------------
-if False:
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    
-    # 使用 "large" 工厂函数创建混合模型
-    model = rf_projected_attention_medium(
-        freq_bins=512, 
-        seq_len=512, 
-        num_classes=25,
-        local_kernel_size=11 # 演示覆盖默认核大小
-    ).to(device)
+if __name__ == "__main__":
+    # 轻量自检：前向 + 可选 FLOPs/Params
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    model = rf_att_tiny(freq_bins=512, seq_len=512, num_classes=10).to(device)
 
-    print(model) # 打印模型结构，检查 HybridGroupedAttentionRF 和 TemporalConvBranch
-
-    x = torch.randn(16, 1, 512, 512).to(device)  # (B, C, F, T)
+    x = torch.randn(2, 1, 512, 512, device=device)
     out = model(x)
-    print(f"Input shape: {x.shape}")
-    print(f"Output logits shape: {out.shape}") # 应该为 (16, 25)
+    print('logits shape:', out.shape)
 
-    # 尝试计算参数量
     try:
         from thop import profile
-        inputs = torch.randn(1, 1, 512, 512).to(device)
-        flops, params = profile(model, (inputs,))
-        print(f"Model: large (hybrid)")
-        print(f"Params: {params/1e6:.2f} M")
-        print(f"FLOPs: {flops/1e9:.2f} G")
-    except ImportError:
-        print("\n[Warning] thop 未安装，跳过 FLOPs/Params 计算。")
-        print("          请运行: pip install thop")
+        inputs = torch.randn(1, 1, 512, 512, device=device)
+        flops, params = profile(model, (inputs,), verbose=False)
+        print('FLOPs:', flops, 'Params:', params)
+    except Exception as e:
+        print('[Info] thop not available or profiling failed:', e)

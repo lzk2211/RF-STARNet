@@ -270,7 +270,7 @@ class ResNet1D(nn.Module):
 # ---------------------------------
 # 模块 5: 工厂函数 (全部更新为使用新模块)
 # ---------------------------------
-def F_cnn(
+def F_cnn_main(
     block,  # <--- 传入 MultiDilationBasicBlock1D
     num_classes: int = 1000,
     include_top: bool = True,
@@ -308,33 +308,34 @@ def F_cnn(
 # --- 使用新模块的工厂 ---
 # 默认使用 MultiDilationBasicBlock1D
 
-# def F_cnn_mini(num_classes: int = 1000, include_top: bool = True):
-#     # 16 / 4 = 4. base_channels=16 也能被 4 整除
-#     return F_cnn(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
-#         layers=(1, 1, 0, 0), base_channels=64, groups=32, dropout=0.3)
+def F_cnn_nano(num_classes: int = 1000, include_top: bool = True):
+    # 16 / 4 = 4. base_channels=16 也能被 4 整除
+    return F_cnn_main(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
+        layers=(1, 1, 1, 1), base_channels=8, groups=8, dropout=0.1)
+
 def F_cnn_mini(num_classes: int = 1000, include_top: bool = True):
     # 16 / 4 = 4. base_channels=16 也能被 4 整除
-    return F_cnn(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
-        layers=(1, 1, 0, 0), base_channels=64, groups=32, dropout=0.3)
+    return F_cnn_main(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
+        layers=(1, 1, 1, 1), base_channels=16, groups=16, dropout=0.2)
         
 def F_cnn_tiny(num_classes: int = 1000, include_top: bool = True):
     # 32 / 4 = 8. base_channels=32 也能被 4 整除
-    return F_cnn(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
+    return F_cnn_main(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
         layers=(1, 1, 1, 1), base_channels=32, groups=32, dropout=0.3)
 
 def F_cnn_small(num_classes: int = 1000, include_top: bool = True):
     # 64 / 4 = 16. base_channels=64 也能被 4 整除
-    return F_cnn(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
+    return F_cnn_main(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
         layers=(1, 1, 1, 1), base_channels=64, groups=32, dropout=0.5)
 
-def F_cnn_base(num_classes: int = 1000, include_top: bool = True, dropout: float = 0.5):
+def F_cnn_base(num_classes: int = 1000, include_top: bool = True):
     """ResNet-18 结构 (MultiDilationBasicBlock1D, [2,2,2,2])"""
-    return F_cnn(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
-        layers=(2, 2, 2, 2), base_channels=64, groups=32, dropout=dropout)
+    return F_cnn_main(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
+        layers=(2, 2, 2, 2), base_channels=64, groups=32, dropout=0.5)
 
 def F_cnn_large(num_classes: int = 1000, include_top: bool = True):
     """ResNet-34 结构 (MultiDilationBasicBlock1D, [3,4,6,3])"""
-    return F_cnn(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
+    return F_cnn_main(MultiDilationBasicBlock1D, num_classes=num_classes, include_top=include_top,
         layers=(3, 4, 6, 3), base_channels=64, groups=32, dropout=0.5)
 
 
@@ -347,6 +348,7 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     for model_func, name in [
+        (F_cnn_nano, "F_cnn_nano"),
         (F_cnn_mini, "F_cnn_mini"),
         (F_cnn_tiny, "F_cnn_tiny"),
         (F_cnn_small, "F_cnn_small"),
@@ -360,4 +362,3 @@ if __name__ == "__main__":
         flops, params = profile(model, (inputs,), verbose=False)
         print(name, 'flops: ', flops, 'params: ', params)
 
-        

@@ -114,7 +114,7 @@ class ResInc_SpAtt_Classifier(nn.Module):
 		# 加权融合
 		# 门控权重分别作用于 res 特征和 sp 特征部分
 		gated_res_feat = gate[:, :res_feat.shape[1]] * res_feat
-		gated_sp_feat = gate[:, res_feat.shape[1]:] * sp_feat		
+		gated_sp_feat = gate[:, res_feat.shape[1]:] * sp_feat		#训练权重占比很小，值很小
 		# 获得最终融合特征
 		feat = torch.cat([gated_res_feat, gated_sp_feat], dim=-1)
 

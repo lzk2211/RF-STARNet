@@ -244,11 +244,35 @@ class RFProjectedAttentionClassifier(nn.Module):
     #     'dropout': 0.1,
     #     'stem_pool_factor': 64
     # }
-def T_att_mini(freq_bins: int, seq_len: int, num_classes: int, 
+def T_att_nano(freq_bins: int, seq_len: int, num_classes: int, 
                 include_top: bool = True, **kwargs): # <-- 【改动】include_top 成为显式参数
 
     config = {
         'groups': 128,
+        'att_dim': 2,
+        'hidden_dim': 4,
+        'dropout': 0.1,
+        'stem_pool_factor': 64
+    }
+    
+    # 允许 kwargs 覆盖默认配置 (例如 dropout=0.0)
+    config.update(kwargs) 
+    
+    return RFProjectedAttentionClassifier(
+        freq_bins=freq_bins,
+        seq_len=seq_len,
+        num_classes=num_classes,
+        # stem_pool_factor=stem_pool_factor,
+        include_top=include_top, # <-- 直接传入
+        **config
+    )
+
+
+def T_att_mini(freq_bins: int, seq_len: int, num_classes: int, 
+                include_top: bool = True, **kwargs): # <-- 【改动】include_top 成为显式参数
+
+    config = {
+        'groups': 64,
         'att_dim': 4,
         'hidden_dim': 8,
         'dropout': 0.1,
@@ -366,7 +390,7 @@ __all__ = [
     'RelativePositionBias',
     'GroupedProjectedAttentionRF',
     'RFProjectedAttentionClassifier',
-    'T_att_mini', 'T_att_tiny', 'T_att_small', 'T_att_medium', 'T_att_large'
+    'T_att_nano', 'T_att_mini', 'T_att_tiny', 'T_att_small', 'T_att_medium', 'T_att_large'
 ]
 
 if __name__ == "__main__":
@@ -375,6 +399,7 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     for model_func, name in [
+        (T_att_nano, "T_att_nano"),
         (T_att_mini, "T_att_mini"),
         (T_att_tiny, "T_att_tiny"),
         (T_att_small, "T_att_small"),

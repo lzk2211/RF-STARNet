@@ -167,7 +167,7 @@ class ResInc_SpAtt_Classifier(nn.Module):
 		if self.training:
 			return logits_fusion, logits_res, logits_sp, res_feat, sp_feat
 		else:
-			return logits_fusion, linear_CKA(res_feat, sp_feat)
+			return logits_fusion, linear_CKA(res_feat, sp_feat), logits_res, logits_sp
 		
 
 def F_T(num_classes: int = 25,

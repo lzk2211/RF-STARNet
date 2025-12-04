@@ -393,17 +393,33 @@ if __name__ == "__main__":
 
     # 输入 (B, C, L) -> (1, 1, 2048) 假设 STFT N=2048
     # 或者 (1, 1, 512)
-    summary(model, input_size=(1, 512))
+    # summary(model, input_size=(1, 512))
 
-    inputs = torch.randn(1, 1, 512).to(device) # 1D 频谱向量
-    flops, params = profile(model, (inputs,))
-    print('flops: ', flops, 'params: ', params)
+    # inputs = torch.randn(1, 1, 512).to(device) # 1D 频谱向量
+    # flops, params = profile(model, (inputs,))
+    # print('flops: ', flops, 'params: ', params)
 
-    # 对比旧的 BasicBlock1D
-    old_model = ResNet1D(BasicBlock1D, [2,2,2,2], num_classes=10, include_top=True, 
-                        base_channels=64, groups=32, dropout=0.5)
-    old_model = old_model.to(device)
-    flops_old, params_old = profile(old_model, (inputs,))
-    print('old_flops: ', flops_old, 'old_params: ', params_old)
+    # # 对比旧的 BasicBlock1D
+    # old_model = ResNet1D(BasicBlock1D, [2,2,2,2], num_classes=10, include_top=True, 
+    #                     base_channels=64, groups=32, dropout=0.5)
+    # old_model = old_model.to(device)
+    # flops_old, params_old = profile(old_model, (inputs,))
+    # print('old_flops: ', flops_old, 'old_params: ', params_old)
 
     # # 你会发现 flops 和 params 基本一致
+    model.load_state_dict(torch.load('/home/kk/lzk/SRSpecNet/1114/Multi_Res_base/model.pth', map_location=device))
+    model.eval() # 切换到评估模式
+
+    # 3. 准备一个符合你模型输入的示例张量（dummy input）
+    # 根据你的记忆，你的输入是 (bs, 1, 512, 512)
+    # 我们这里用 batch_size=1
+    dummy_input = torch.randn(1, 1, 512, 512).to(device)
+
+    # 4. 导出为 ONNX
+    torch.onnx.export(model,               # 你要导出的模型
+                    dummy_input,         # 一个示例输入
+                    "model.onnx",        # 导出的文件名
+                    input_names=['input'], # 可选：指定输入名
+                    output_names=['output']) # 可选：指定输出名
+
+    print("模型已成功导出为 model.onnx")

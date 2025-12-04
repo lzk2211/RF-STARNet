@@ -458,7 +458,7 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     for model_func, name in [
-        # (Res_Inc_Net_mini, "Res_Inc_Net_mini"),
+        (Res_Inc_Net_mini, "Res_Inc_Net_mini"),
         (Res_Inc_Net_tiny, "Res_Inc_Net_tiny"),
         (Res_Inc_Net_small, "Res_Inc_Net_small"),
         (Res_Inc_Net_base, "Res_Inc_Net_base"),

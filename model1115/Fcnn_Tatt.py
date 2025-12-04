@@ -3,12 +3,12 @@ import torch.nn as nn
 from typing import Optional
 
 try:
-	from model1115.Spectral_Resolution import Res_Inc_Net_tiny as Spectral_Res
-	from model1115.T_att import rf_att_tiny as T_att
+	from model1115.Spectral_Resolution import Res_Inc_Net_mini as Spectral_Res
+	from model1115.T_att import rf_att_mini as T_att
 except ImportError as e:
-	print("未能在 'model1113' 文件夹下找到模块，尝试从当前目录导入...")
-	from Spectral_Resolution import Res_Inc_Net_tiny as Spectral_Res
-	from T_att import rf_att_tiny as T_att
+	print("未能在 'model1115' 文件夹下找到模块，尝试从当前目录导入...")
+	from Spectral_Resolution import Res_Inc_Net_mini as Spectral_Res
+	from T_att import rf_att_mini as T_att
 import torch.nn.functional as F
 
 class ResInc_SpAtt_Classifier(nn.Module):
@@ -63,10 +63,10 @@ class ResInc_SpAtt_Classifier(nn.Module):
 		# 维度推断：
 		# - Res 分支通道数：对于 base(2,2,2,2)+BasicBlock，最终 C_res 通常为 512
 		# - Spectra 分支经时间平均后维度为 freq_bins
-		C_res = 512  # 与 Res_Inc_Net_base 的默认配置一致
-		C_sp = freq_bins
+		C_res = 128  # 与 Res_Inc_Net_base 的默认配置一致
+		C_sp = 512
 
-		feat_dim = C_res + freq_bins
+		feat_dim = C_res + C_sp
 
 		# 轻量分类头：参数显著减少（LN + Dropout + Linear）
 		# 原结构为两层全连接（feat_dim->hidden_dim->num_classes），参数较多；
@@ -99,7 +99,7 @@ class ResInc_SpAtt_Classifier(nn.Module):
 
 		res_feat = self.res_pool(self.res_backbone(x)).squeeze(-1) # (B, 512)
 
-		sp_feat = self.spectra_att(x).mean(dim=-1)                 # (B, 512)		
+		sp_feat = self.spectra_att(x).mean(dim=-1)                 # (B, 512)
 		# 方案二：低秩适配器 (加法融合)
 		# (self.gate_projector 在 __init__ 中定义为方案一的瓶颈)
 		# adapter_signal = self.gate_projector(res_feat)
@@ -111,6 +111,9 @@ class ResInc_SpAtt_Classifier(nn.Module):
 
 		# 融合
 		feat = torch.cat([res_feat, sp_feat], dim=-1)  # (B, C_res + F)
+		# print(res_feat.shape)
+		# print(sp_feat.shape)
+		# print(feat.shape)
 		if return_features:
 			return feat
 		logits = self.classifier(feat)

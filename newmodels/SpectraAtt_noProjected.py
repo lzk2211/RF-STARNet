@@ -291,16 +291,17 @@ __all__ = [
 if False:
     # 轻量自检：前向 + 可选 FLOPs/Params
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    model = rf_att_medium(freq_bins=512, seq_len=512, num_classes=25).to(device)
+    model = rf_att_medium(freq_bins=512, seq_len=512, num_classes=10).to(device)
 
-    x = torch.randn(2, 1, 512, 512, device=device)
+    x = torch.randn(1, 1, 512, 512, device=device)
     out = model(x)
     print('logits shape:', out.shape)
 
     try:
         from thop import profile
         inputs = torch.randn(1, 1, 512, 512, device=device)
-        flops, params = profile(model, (inputs,))
+        flops, params = profile(model, (inputs,), verbose=False)
         print('FLOPs:', flops, 'Params:', params)
     except Exception as e:
         print('[Info] thop not available or profiling failed:', e)
+# FLOPs: 51513856.0 Params: 233226.0

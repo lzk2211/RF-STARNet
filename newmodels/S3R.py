@@ -187,7 +187,7 @@ class NET(nn.Module):
 
         return predict
 
-if False:
+if True:
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     model = NET(in_channels=1, input_size=[int(512), 512], semantic_dim=128, num_class=10, device=device).to(device)
 

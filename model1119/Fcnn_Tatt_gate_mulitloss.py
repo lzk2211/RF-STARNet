@@ -10,6 +10,26 @@ except ImportError as e:
 	from F_cnn import *
 	from T_att import *
 
+def linear_CKA(X, Y):
+    # X: (B, d1), Y: (B, d2)
+    # 必须确保已归一化 (Center the features)
+    X = X - X.mean(dim=0, keepdim=True)
+    Y = Y - Y.mean(dim=0, keepdim=True)
+
+    # 计算 Gram 矩阵
+    GramX = torch.mm(X, X.t()) # (B, B)
+    GramY = torch.mm(Y, Y.t()) # (B, B)
+
+    # 计算 CKA
+    # Hilbert-Schmidt Independence Criterion (HSIC)
+    hsic = torch.sum(GramX * GramY)
+    
+    normalization_x = torch.sqrt(torch.sum(GramX * GramX))
+    normalization_y = torch.sqrt(torch.sum(GramY * GramY))
+    
+    cka = hsic / (normalization_x * normalization_y)
+    return cka.item()
+
 class ResInc_SpAtt_Classifier(nn.Module):
 	"""
 	联合模型：将 1D ResNet(Res_Inc_Net) 与 频谱注意力(GroupedProjectedAttentionRF) 的特征拼接后分类。
@@ -46,17 +66,17 @@ class ResInc_SpAtt_Classifier(nn.Module):
 		self.mode = mode
 
 		if use_resinc_variant == 'large':
-			F_cnn = F_cnn_base
-			T_att = T_att_base
+			F_cnn = F_cnn_large
+			T_att = T_att_large
 			C_res = 512
 		elif use_resinc_variant == 'base':
 			F_cnn = F_cnn_base
 			T_att = T_att_base
 			C_res = 512
 		elif use_resinc_variant == 'small':
-			F_cnn = F_cnn_tiny
-			T_att = T_att_tiny
-			C_res = 256
+			F_cnn = F_cnn_small
+			T_att = T_att_small
+			C_res = 512
 		elif use_resinc_variant == 'tiny':
 			F_cnn = F_cnn_tiny
 			T_att = T_att_tiny
@@ -147,7 +167,7 @@ class ResInc_SpAtt_Classifier(nn.Module):
 		if self.training:
 			return logits_fusion, logits_res, logits_sp, res_feat, sp_feat
 		else:
-			return logits_fusion
+			return logits_fusion, linear_CKA(res_feat, sp_feat)
 		
 
 def F_T(num_classes: int = 25,

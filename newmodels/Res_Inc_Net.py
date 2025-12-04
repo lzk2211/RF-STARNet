@@ -243,10 +243,10 @@ def Res_Inc_Net_small(num_classes: int = 1000, include_top: bool = True):
     return Res_Inc_Net(BasicBlock1D, num_classes=num_classes, include_top=include_top,
         layers=(1, 1, 1, 1), base_channels=64, dropout=0.5)
 
-def Res_Inc_Net_base(num_classes: int = 1000, include_top: bool = True):
+def Res_Inc_Net_base(num_classes: int = 1000, include_top: bool = True, dropout: float = 0.5):
     """ResNet-18 结构 (BasicBlock, [2,2,2,2])"""
     return Res_Inc_Net(BasicBlock1D, num_classes=num_classes, include_top=include_top,
-        layers=(2, 2, 2, 2), base_channels=64, dropout=0.5)
+        layers=(2, 2, 2, 2), base_channels=64, dropout=dropout)
 
 def Res_Inc_Net_large(num_classes: int = 1000, include_top: bool = True):
     """ResNet-34 结构 (BasicBlock, [3,4,6,3])"""
@@ -266,14 +266,38 @@ def Res_Inc_Net_101(num_classes: int = 1000, include_top: bool = True):
 
 
 
-# from torchsummary import summary
-# from thop import profile
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+if __name__ == "__main__":
+    from torchsummary import summary
+    from thop import profile
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# model = Res_Inc_Net_base(num_classes=10, include_top=True)
-# model = model.to(device)
+    model = Res_Inc_Net_small(num_classes=10, include_top=True)
+    model = model.to(device)
 
-# # summary(model, input_size=(1, 512))
-# inputs = torch.randn(1, 1, 512, 512).to(device)
-# flops, params = profile(model, (inputs,))
-# print('flops: ', flops, 'params: ', params)
+    # summary(model, input_size=(1, 512))
+    # inputs = torch.randn(1, 1, 512, 512).to(device)
+    # flops, params = profile(model, (inputs,), verbose=False)
+    # print('flops: ', flops, 'params: ', params)
+    # flops:  3536384.0 params:  134986.0
+    # 1. 实例化你的模型
+    # 假设你的模型是 RFformer，并且需要 num_classes=10
+    # model = YourModelClass(num_classes=10) # 替换成你自己的模型类和参数
+
+    # 2. 加载你训练好的 .pth 权重文件
+    # 注意：这里假设你的 .pth 文件是 state_dict
+    model.load_state_dict(torch.load('/home/kk/lzk/SRSpecNet/1112/Res_Inc_Net_small/model.pth', map_location=device))
+    model.eval() # 切换到评估模式
+
+    # 3. 准备一个符合你模型输入的示例张量（dummy input）
+    # 根据你的记忆，你的输入是 (bs, 1, 512, 512)
+    # 我们这里用 batch_size=1
+    dummy_input = torch.randn(1, 1, 512, 512).to(device)
+
+    # 4. 导出为 ONNX
+    torch.onnx.export(model,               # 你要导出的模型
+                    dummy_input,         # 一个示例输入
+                    "model.onnx",        # 导出的文件名
+                    input_names=['input'], # 可选：指定输入名
+                    output_names=['output']) # 可选：指定输出名
+
+    print("模型已成功导出为 model.onnx")

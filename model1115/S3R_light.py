@@ -198,5 +198,23 @@ if __name__ == "__main__":
     # 输入仍然是 [B, 1, 512, 512]，模型内部会处理降维
 	inputs = torch.randn(1, 1, 512, 512).to(device) 
 	
-	flops, params = profile(model, (inputs,), verbose=False)
-	print('flops: ', flops, 'params: ', params)
+	# flops, params = profile(model, (inputs,), verbose=False)
+	# print('flops: ', flops, 'params: ', params)
+
+    # model.load_state_dict(torch.load('/home/kk/lzk/SRSpecNet/1112/Res_Inc_Net_small/model.pth', map_location=device))
+	model.eval() # 切换到评估模式
+
+    # 3. 准备一个符合你模型输入的示例张量（dummy input）
+    # 根据你的记忆，你的输入是 (bs, 1, 512, 512)
+    # 我们这里用 batch_size=1
+	dummy_input = torch.randn(1, 1, 512, 512).to(device)
+
+    # 4. 导出为 ONNX
+	torch.onnx.export(model,               # 你要导出的模型
+		dummy_input,         # 一个示例输入
+		"model.onnx",        # 导出的文件名
+		input_names=['input'], # 可选：指定输入名
+		output_names=['output']) # 可选：指定输出名
+
+	print("模型已成功导出为 model.onnx")
+    
