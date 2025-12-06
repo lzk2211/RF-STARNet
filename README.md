@@ -115,9 +115,64 @@ Key Arguments:
 
 ## 📊 Results
 
-Performance comparison on DroneRFa dataset (Avg Accuracy vs. Efficiency):
+Performance comparison on DroneRFa dataset (Avg Accuracy vs. Efficiency)
 
-### Comprehensive Analysis: Ablation Study & Performance Comparison (Small Scale Focus)
+### 1. **Performance Superiority**
+The proposed dual-stream fusion network, H-starNet, demonstrates superior performance across all evaluation metrics compared to its individual sub-branches (HARNet and SSTA). specifically, H-starNet achieves an average accuracy of **81.44%**, outperforming the standalone HARNet and SSTA branches by *3.63%* and *5.65%*, respectively. This validates the effectiveness of fusing temporal and spectral features, leveraging the complementary strengths of CNN-based and Transformer-based architectures.
+
+<div align="center">
+<table>
+  <tr>
+    <td style="text-align:center">
+      <img src="graph/acc.png" width="400" alt="Fusion vs HARNet">
+      <br>
+      <b>(a) Accuracy</b>
+    </td>
+    <td style="text-align:center">
+      <img src="graph/precision.png" width="400" alt="Fusion vs SSTA">
+      <br>
+      <b>(b) Precision</b>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="text-align:center">
+      <img src="graph/recall.png" width="400" alt="Fusion vs SSTA">
+      <br>
+      <b>(c) Recall</b> </td>
+    <td style="text-align:center">
+      <img src="graph/f1.png" width="400" alt="Fusion vs SSTA">
+      <br>
+      <b>(d) F1-score</b> </td>
+  </tr>
+</table>
+</div>
+
+### 2. Efficiency vs. Accuracy Trade-off
+The trade-off between model accuracy and computational complexity. 
+
+Lightweight Design: H-starNet maintains an extremely low parameter count (**0.188 M**) and computational cost (**3.80 M MACs**). Compared to the heavyweight ResNet18 (11.18 M Params), our model reduces the model size by approximately 98% while achieving a higher accuracy (**81.44% vs. 76.11%**).
+
+Inference Speed: The optimized architecture allows for rapid inference (**3.65s on GPU**), making it highly suitable for real-time drone detection on edge devices. The high Model Efficiency Index (**MEI = 6.87**) further confirms that H-starNet achieves the best balance between performance and resource consumption among all compared methods.
+
+<div align="center">
+<table>
+<tr>
+<td style="text-align:center">
+<img src="graph/markers_chart_flops.png" width="400" alt="Fusion vs HARNet">
+
+<b>(a) The Average Accuracy vs. Computational Cost</b>
+</td>
+<td style="text-align:center">
+<img src="graph/markers_chart_params.png" width="400" alt="Fusion vs SSTA">
+
+<b>(b) The Average Accuracy vs. Model Size</b>
+</td>
+</tr>
+</table>
+</div>
+
+### 3. Comprehensive Analysis: Ablation Study & Performance Comparison (Small Scale Focus)
 
 **Table Caption:** Part I details the impact of specific modules on the Small architecture relative to the baseline. Part II compares our final models against state-of-the-art methods. MEI is calculated as $Acc / \log(Params \times MACs)$.
 
