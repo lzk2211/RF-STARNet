@@ -6,6 +6,7 @@
 [Yunling Liao](https://github.com/FishSkin2002),
 [Zhiyv Dai](https://github.com/krismiledy) and 
 [JunSheng Mu](https://scholar.google.com/citations?hl=zh-CN&user=ikS5u98AAAAJ)
+(Provisional)
 
 Beijing University of Posts & Telecommunications.
 
@@ -34,14 +35,7 @@ Beijing University of Posts & Telecommunications.
 
 ## 📝 Abstract(Updating)
 
-Radio Frequency (RF) fingerprinting is a promising technique for Unmanned Aerial Vehicle (UAV) identification. However, existing methods often struggle to balance recognition accuracy with computational efficiency, especially under low Signal-to-Noise Ratio (SNR) conditions.
-
-This paper proposes **H-starNet**, a lightweight **H**armonic-aware **S**pectro-**T**emporal **A**ttention **R**esidual **Net**work. Our approach disentangles the RF signals into two complementary domains:
-
-- **Spectral Branch (HARNet)**: Captures stationary frequency fingerprints (e.g., filter shapes) using a Multi-Resolution Frequency Sparse Module (MRFSM).
-- **Temporal Branch (SSTA)**: Captures dynamic temporal patterns (e.g., hopping sequences) using Sparse Sub-band Temporal Attention.
-
-Coupled with a **Gated Cross-Domain** Fusion mechanism and a **Deep Supervision** training strategy, H-starNet achieves state-of-the-art accuracy with significantly lower computational costs compared to traditional CNNs and Transformers.
+Abstract—Radio Frequency (RF) fingerprinting is a pivotal technology for non-cooperative Unmanned Aerial Vehicle (UAV) identification. However, existing deep learning approaches typically treat RF spectrograms as generic images, ignoring the distinct stationary behaviors inherent across time and frequency domains. This oversight often results in significant computational redundancy and suboptimal performance in resource-constrained scenarios. To address this, we propose a lightweight **H**armonic-aware **S**pectro-**T**emporal **A**ttention **R**esidual **Net**work (**H-starNet**), which synergistically decouples time-frequency learning to achieve efficient detection. Specifically, we design a Harmonic-Aware Residual Network (**HARNet**) equipped with a Multi-resolution Frequency Semantic Feature Module (MRFSM) to extract sparse, stationary frequency patterns. Simultaneously, a Sparse Sub-band Temporal Attention (**SSTA**) mechanism is introduced to capture global temporal autocorrelations and cyclostationary features, effectively compensating for the semantic information loss typical of 1D spectral vectors. To deeply integrate these heterogeneous features, an Adaptive Gating Mechanism is proposed to dynamically calibrate the contribution of each branch. Furthermore, a novel training strategy incorporating auxiliary deep supervision and a Feature Orthogonal Loss is employed to enforce feature decorrelation, ensuring that the two branches learn complementary discriminative knowledge. Experimental results demonstrate that H-starNet achieves a superior accuracy of **81.44\%** with an ultra-low computational cost of **3.8 MFLOPs**, exhibiting remarkable robustness even in low Signal-to-Noise Ratio (SNR) environments.
 
 ## 🏗️ Framework
 
