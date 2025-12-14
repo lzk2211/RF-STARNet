@@ -14,7 +14,7 @@ Beijing University of Posts & Telecommunications.
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](#installation)
 [![Pytorch](https://img.shields.io/badge/Pytorch-2.4.0-red)](#installation)
 [![Shell](https://img.shields.io/badge/Shell-Scripts-green)](#installation)
-[![GitHub - RF-STARNet](https://img.shields.io/badge/GitHub-RF-STARNet-000000?logo=github)](https://github.com/lzk2211/RF-STARNet)
+[![GitHub - RF-STARNet](https://img.shields.io/badge/Github-RFSTARNet-pink?logo=github)](https://github.com/lzk2211/RF-STARNet)
 
 </div>
 
