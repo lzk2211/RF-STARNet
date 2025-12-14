@@ -140,7 +140,7 @@ def create_markers_scatter_chart():
     groups_config = {
         "SARNet": {"data": group_fcnn, "color": "#1f77b4", "marker": "o"},          # 蓝色 圆点
         "SSTA": {"data": group_tatt, "color": "#ff7f0e", "marker": "^"},          # 橙色 三角
-        "RF-starNet":  {"data": group_fusion, "color": "#2ca02c", "marker": "s"},        # 绿色 方块
+        "RF-STARNet":  {"data": group_fusion, "color": "#2ca02c", "marker": "s"},        # 绿色 方块
         "S3R":  {"data": group_s3r, "color": "#d62728", "marker": "D"},           # 红色 菱形
         "MobileNet": {"data": group_mobilenet, "color": "#9467bd", "marker": "v"},# 紫色 倒三角
         "ResNet18": {"data": group_resnet, "color": "#8c564b", "marker": "X"},      # 棕色 X
