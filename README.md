@@ -1,4 +1,6 @@
-<h1 align="center">RF-STARNet: A Dual-Stream Lightweight Framework for UAV RF Fingerprinting Identification</h1>
+<h1 align="center">
+  <img src="graph/title.png">
+</h1>
 
 <div align="center">
 
