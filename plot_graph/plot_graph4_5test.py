@@ -9,8 +9,8 @@ plt.rcParams['savefig.dpi'] = 300
 metrics_to_plot = ['acc', 'precision', 'recall', 'f1']
 
 model_name = [
-    [F_T_small_mulitloss_1122_metrics, 'H-starNet'],
-    [F_cnn_bn_small_1122_metrics, 'HARNet'],
+    [F_T_small_mulitloss_1122_metrics, 'RF-starNet'],
+    [F_cnn_bn_small_1122_metrics, 'SARNet'],
     [T_att_small_1122_metrics, 'SSTA'],
 
     [S3R_metrics, 'S3R'],
@@ -21,9 +21,9 @@ model_name = [
 
 # 为不同模型指定不同的 marker（可选：配色与 markers.py 保持一致）
 model_styles = {
-    'HARNet':      dict(marker='o', color='#1f77b4'),  # 圆点
+    'SARNet':      dict(marker='o', color='#1f77b4'),  # 圆点
     'SSTA':        dict(marker='^', color='#ff7f0e'),  # 上三角
-    'H-starNet':   dict(marker='s', color='#2ca02c'),  # 方块
+    'RF-starNet':   dict(marker='s', color='#2ca02c'),  # 方块
     'S3R':         dict(marker='D', color='#d62728'),  # 菱形
     'MobileNetV3': dict(marker='v', color='#9467bd'),  # 下三角
     'resnet18':    dict(marker='X', color='#8c564b'),  # X（若启用）

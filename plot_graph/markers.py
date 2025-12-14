@@ -76,7 +76,7 @@ def _plot_grouped_markers(groups_config, x_key, xlabel, title, out_name, x_log=T
         plt.xscale("log")
     plt.xlabel(xlabel, fontsize=font_cfg["label"], fontweight="bold", family="Times New Roman")
     plt.ylabel("Average Accuracy (%)", fontsize=font_cfg["label"], fontweight="bold", family="Times New Roman")
-    plt.title(title, fontsize=font_cfg["title"], pad=8, family="Times New Roman")
+    # plt.title(title, fontsize=font_cfg["title"], pad=8, family="Times New Roman")
 
     plt.xticks(fontsize=font_cfg["tick"], family="Times New Roman")
     plt.yticks(fontsize=font_cfg["tick"], family="Times New Roman")
@@ -138,9 +138,9 @@ def create_markers_scatter_chart():
     ]
 
     groups_config = {
-        "HARNet": {"data": group_fcnn, "color": "#1f77b4", "marker": "o"},          # 蓝色 圆点
+        "SARNet": {"data": group_fcnn, "color": "#1f77b4", "marker": "o"},          # 蓝色 圆点
         "SSTA": {"data": group_tatt, "color": "#ff7f0e", "marker": "^"},          # 橙色 三角
-        "H-starNet":  {"data": group_fusion, "color": "#2ca02c", "marker": "s"},        # 绿色 方块
+        "RF-starNet":  {"data": group_fusion, "color": "#2ca02c", "marker": "s"},        # 绿色 方块
         "S3R":  {"data": group_s3r, "color": "#d62728", "marker": "D"},           # 红色 菱形
         "MobileNet": {"data": group_mobilenet, "color": "#9467bd", "marker": "v"},# 紫色 倒三角
         "ResNet18": {"data": group_resnet, "color": "#8c564b", "marker": "X"},      # 棕色 X
@@ -151,7 +151,7 @@ def create_markers_scatter_chart():
     _plot_grouped_markers(
         groups_config,
         x_key="flops",
-        xlabel="Computational Cost (FLOPs)",
+        xlabel="Model MACs (FLOPs)",
         title="Accuracy vs. Efficiency (FLOPs)",
         out_name="markers_chart_flops",
         x_log=True,
@@ -161,7 +161,7 @@ def create_markers_scatter_chart():
     _plot_grouped_markers(
         groups_config,
         x_key="params",
-        xlabel="Model Size (Params)",
+        xlabel="Model Params (M)",
         title="Accuracy vs. Efficiency (Params)",
         out_name="markers_chart_params",
         x_log=True,
