@@ -28,6 +28,13 @@ Beijing University of Posts & Telecommunications.
   <p>click <a href="graph/methodologies.pdf">here</a> to see the PDF</p>
 </div>
 
+## 📄 文档概要
+
+- 介绍了 RF-STARNet：一种针对无人机射频指纹识别的轻量化双分支（频谱 SARNet + 时域 SSTA）网络，并配有融合与多重监督策略。
+- 概述了所用 DroneRFa 数据集的组织形式与预处理方法（50ms 信号切片、512×512 频谱图）。
+- 给出了环境依赖的安装方式，以及使用 `main.py` 进行训练/测试的基本命令行参数。
+- 总结了在精度、计算量、推理速度等方面的实验结果与消融研究，并展示了可视化分析（CAM、误差马赛克图）。
+
 ## 📣 News
 
 - [06/Nov/2025] Initial public release of RF-STARNet repository.
