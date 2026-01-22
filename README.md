@@ -205,25 +205,25 @@ Inference Speed: The optimized architecture allows for rapid inference (**3.65s 
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Part I: Module Ablation Study** | | | | | | | | |
 | *1. Frequency Domain Architecture: SARNet* | | | | | | | | |
-| &nbsp;&nbsp;&nbsp;&nbsp;Baseline | 69.43 | 0.019 | 0.59 | 208.32 | 0.70 | 0.97 | 0.18 | 0.09 |
-| &nbsp;&nbsp;&nbsp;&nbsp;w/ SE block | 70.29 <span style="color:red">(+0.86%)</span> | 0.031 | 0.68 | 207.84 <span style="color:green">(-0.23%)</span> | 0.68 | 0.96 | 0.18 | 0.09 |
-| &nbsp;&nbsp;&nbsp;&nbsp;w/ MRFSM | 72.53 <span style="color:red">(+3.10%)</span> | 0.019 | 0.59 | 227.34 <span style="color:red">(+8.37%)</span> | 0.69 | 1.03 | 0.18 | 0.11 |
-| &nbsp;&nbsp;&nbsp;&nbsp;**SARNet (Proposed)** | **77.81** <span style="color:red">(+8.38%)</span> | 0.111 | 2.01 | **231.69** <span style="color:red">(+10.09%)</span> | 0.68 | 1.07 | 0.19 | 0.09 |
+| Baseline | 69.43 | 0.019 | 0.59 | 208.32 | 0.70 | 0.97 | 0.18 | 0.09 |
+| w/ SE block | 70.29 <span style="color:red">(+0.86%)</span> | 0.031 | 0.68 | 207.84 <span style="color:green">(-0.23%)</span> | 0.68 | 0.96 | 0.18 | 0.09 |
+| w/ MRFSM | 72.53 <span style="color:red">(+3.10%)</span> | 0.019 | 0.59 | 227.34 <span style="color:red">(+8.37%)</span> | 0.69 | 1.03 | 0.18 | 0.11 |
+| **SARNet (Proposed)** | **77.81** <span style="color:red">(+8.38%)</span> | 0.111 | 2.01 | **231.69** <span style="color:red">(+10.09%)</span> | 0.68 | 1.07 | 0.19 | 0.09 |
 | *2. Time Domain Architecture: SSTA* | | | | | | | | |
-| &nbsp;&nbsp;&nbsp;&nbsp;Baseline (RPB) | 74.18 | 0.550 | 273.70 | 168.56 | 0.55 | 2.93 | 1.11 | 0.14 |
-| &nbsp;&nbsp;&nbsp;&nbsp;w/ Stem | 74.33 <span style="color:red">(+0.15%)</span> | 0.550 | 34.26 | 180.75 <span style="color:red">(+6.74%)</span> | 0.68 | 1.15 | 0.29 | 0.12 |
-| &nbsp;&nbsp;&nbsp;&nbsp;w/ GSA | 75.21 <span style="color:red">(+1.03%)</span> | 0.042 | 13.65 | 208.92 <span style="color:red">(+19.32%)</span> | 1.05 | 42.98 | 1.03 | 0.48 |
-| &nbsp;&nbsp;&nbsp;&nbsp;**SSTA (Proposed)** | **75.79** <span style="color:red">(+1.61%)</span> | 0.042 | 1.75 | **229.58** <span style="color:red">(+26.58%)</span> | 0.68 | 2.23 | 0.27 | 0.06 |
+| Baseline (RPB) | 74.18 | 0.550 | 273.70 | 168.56 | 0.55 | 2.93 | 1.11 | 0.14 |
+| w/ Stem | 74.33 <span style="color:red">(+0.15%)</span> | 0.550 | 34.26 | 180.75 <span style="color:red">(+6.74%)</span> | 0.68 | 1.15 | 0.29 | 0.12 |
+| w/ GSA | 75.21 <span style="color:red">(+1.03%)</span> | 0.042 | 13.65 | 208.92 <span style="color:red">(+19.32%)</span> | 1.05 | 42.98 | 1.03 | 0.48 |
+| **SSTA (Proposed)** | **75.79** <span style="color:red">(+1.61%)</span> | 0.042 | 1.75 | **229.58** <span style="color:red">(+26.58%)</span> | 0.68 | 2.23 | 0.27 | 0.06 |
 | *3. Fusion Architecture: RF-STARNet* | | | | | | | | |
-| &nbsp;&nbsp;&nbsp;&nbsp;Baseline | 78.89 | 0.144 | 3.75 | 230.38 | 0.72 | 2.84 | 0.27 | 0.11 |
-| &nbsp;&nbsp;&nbsp;&nbsp;w/ AGM | 80.41 <span style="color:red">(+1.52%)</span> | 0.177 | 3.79 | 237.43 <span style="color:red">(+2.97%)</span> | 0.70 | 4.06 | 0.27 | 0.11 |
-| &nbsp;&nbsp;&nbsp;&nbsp;w/ Multi-Loss | 79.32 <span style="color:red">(+0.43%)</span> | 0.154 | 3.76 | 232.30 <span style="color:red">(+0.83%)</span> | 0.71 | 2.57 | 0.29 | 0.21 |
-| &nbsp;&nbsp;&nbsp;&nbsp;**RF-STARNet (Proposed)** | **81.44** <span style="color:red">(+2.55%)</span> | 0.188 | 3.80 | **242.99** <span style="color:red">(+5.19%)</span> | 0.55 | 2.86 | 0.27 | 0.16 |
+| Baseline | 78.89 | 0.144 | 3.75 | 230.38 | 0.72 | 2.84 | 0.27 | 0.11 |
+| w/ AGM | 80.41 <span style="color:red">(+1.52%)</span> | 0.177 | 3.79 | 237.43 <span style="color:red">(+2.97%)</span> | 0.70 | 4.06 | 0.27 | 0.11 |
+| w/ Multi-Loss | 79.32 <span style="color:red">(+0.43%)</span> | 0.154 | 3.76 | 232.30 <span style="color:red">(+0.83%)</span> | 0.71 | 2.57 | 0.29 | 0.21 |
+| **RF-STARNet (Proposed)** | **81.44** <span style="color:red">(+2.55%)</span> | 0.188 | 3.80 | **242.99** <span style="color:red">(+5.19%)</span> | 0.55 | 2.86 | 0.27 | 0.16 |
 | **Part II: Benchmark Comparison** | | | | | | | | |
-| &nbsp;&nbsp;&nbsp;&nbsp;MobileNetV3 [zhu2025] | 77.36 | 0.930 | 316.03 | 179.64 | 0.85 | 19.08 | 2.12 | 0.37 |
-| &nbsp;&nbsp;&nbsp;&nbsp;ResNet18 [he2016] | 76.11 | 11.180 | 9115.93 | 147.91 | 2.27 | - | 5.17 | 0.33 |
-| &nbsp;&nbsp;&nbsp;&nbsp;ResNet-1D [liu2024] | 73.92 | 0.135 | 3.54 | 203.18 | 0.52 | 1.08 | 0.19 | 0.10 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S3R [yu2024] | 72.04 | 34.530 | 547.85 | 138.47 | 1.63 | - | 1.68 | 0.60 |
+| MobileNetV3 | 77.36 | 0.930 | 316.03 | 179.64 | 0.85 | 19.08 | 2.12 | 0.37 |
+| ResNet18 | 76.11 | 11.180 | 9115.93 | 147.91 | 2.27 | - | 5.17 | 0.33 |
+| ResNet-1D | 73.92 | 0.135 | 3.54 | 203.18 | 0.52 | 1.08 | 0.19 | 0.10 |
+| S3R | 72.04 | 34.530 | 547.85 | 138.47 | 1.63 | - | 1.68 | 0.60 |
 
 ## 🔬 Analysis & Visualization
 
