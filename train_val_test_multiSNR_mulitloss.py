@@ -2,57 +2,33 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-# import torch.nn.functional as F
-# from torch.cuda import amp
 import torch
-
 from tqdm import tqdm
-
 import sys, select, time, os
-
-# from spikingjelly.activation_based import neuron, encoding, functional, surrogate, layer
-
 from confusionMatrix import ConfusionMatrix
-
-# from syops import get_model_complexity_info
 from datetime import datetime
 from tabulate import tabulate
-# 延迟导入 sklearn.metrics、matplotlib、pandas、seaborn 到使用函数内部，避免导入期触发 ABI 问题
 import numpy as np
 from thop import profile
-
-from collections import defaultdict  # NEW: 用于构建嵌套字典
-from sklearn.metrics import precision_recall_fscore_support  # NEW: 导入计算指标的工具
-
-from DA import *
-from branch_stats import init_branch_results, update_branch_results, plot_branch_venn  # NEW: 分支统计模块
+from collections import defaultdict
+from sklearn.metrics import precision_recall_fscore_support
+from plot_graph.branch_stats import init_branch_results, update_branch_results, plot_branch_venn
 
 def normalize(matrix):
-    # 假设输入矩阵的形状为 (batch_size, height, width)
     batch_size = matrix.shape[0]
     normalized_matrix = torch.empty_like(matrix)
-    
     for i in range(batch_size):
         min_val = torch.min(matrix[i])
         max_val = torch.max(matrix[i])
         normalized_matrix[i] = (matrix[i] - min_val) / (max_val - min_val)
-    
     return normalized_matrix
 
 def orthogonality_loss(feat1, feat2):
-    # 归一化
     feat1_norm = torch.nn.functional.normalize(feat1, p=2, dim=1)
     feat2_norm = torch.nn.functional.normalize(feat2, p=2, dim=1)
     cross_cov = torch.mm(feat1_norm.t(), feat2_norm)
-    # 如果 feat1 和 feat2 维度不同，需要先投影到相同维度，或者只计算相关性矩阵
-    # 这里假设你已经投影或者维度不同直接计算相关性矩阵的范数
-    # 简单做法：计算余弦相似度的绝对值平均
-    # 注意：你的 res_feat (128) 和 sp_feat (512) 维度不同，需要先对齐
-    # 建议：只对 batch 内的样本相关性做约束，或者在 gate 之后的特征做约束
-    
     return torch.mean(torch.abs(cross_cov))
 
-# Removed multi-label helper (compute_adaptive_thresholds)
 
 def train(args, folder_path, model, device, train_loader, validate_loader):
     if sys.platform.startswith('linux'):
@@ -60,7 +36,6 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
     elif sys.platform.startswith('win'):
         system=1
         import msvcrt
-
     if args.resume:
         # 加载检查点并继续训练
         checkpoint = torch.load('checkpoint_epoch_10.pth')
@@ -70,17 +45,11 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         loss = checkpoint['loss']
     else:
         start_epoch = 0
-    
-    # scaler = amp.GradScaler()
     print(f"Training with {args.epochs} epochs, batch size {args.batch_size}, learning rate {args.lr}")
     writer = SummaryWriter(folder_path + '/runs')    # Define loss function and optimizer
 
-    # 单标签损失与优化器
     loss_function = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-3)
-
-    # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
 
     best_acc = 0.0
@@ -99,18 +68,13 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         train_loss_ortho = 0
 
         train_bar = tqdm(train_loader, file=sys.stdout)
-        # Track training accuracy
         train_correct = 0
         train_total = 0
         for step, data in enumerate(train_bar):
             inputs, labels, snr = data
-            # img = torch.cat((time_seq, inputs), dim=-1).to(device)
             optimizer.zero_grad()
             inputs = inputs.to(device)
             labels = labels.to(device)
-
-            # inputs = spec_augment(inputs)
-            # inputs, targets_a, targets_b, lam = mixup_data(inputs, labels, snr)
 
             main, logits_res, logits_sp, res_feat, sp_feat = model(inputs)
 
@@ -132,7 +96,6 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
 
             total_loss = total_loss
             total_loss.backward()
-            # loss.backward()
             optimizer.step()
 
             # accumulate loss
@@ -168,7 +131,6 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         all_CKA = []
         all_labels = []
         snrs = []
-        # val_steps = len(validate_loader)
 
         snr_datas = {"-20dB": 0, "-15dB": 0, "-10dB": 0, "-5dB": 0, "0dB": 0, "5dB": 0, "10dB": 0}
         with torch.no_grad():
@@ -179,7 +141,6 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
                 val_labels = val_labels.to(device)
 
                 main, CKA, _, _ = model(freq_seq)
-                # outputs = model(torch.real(freq_seq), torch.imag(freq_seq))
 
                 all_outputs.append(main.cpu())
                 all_CKA.append(CKA)
@@ -192,7 +153,6 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
 
         # 单标签分类，使用softmax输出
         _, predicted = torch.max(all_outputs, dim=1)
-        # all_labels = torch.argmax(all_labels, dim=1)
         correct = (predicted == all_labels).float()
         batch_acc = correct.sum().item()
         val_acc = batch_acc
@@ -221,13 +181,13 @@ def train(args, folder_path, model, device, train_loader, validate_loader):
         writer.add_scalar('Acc/val', val_accurate, epoch)
         writer.add_scalar('CKA/val', CKA, epoch)
 
-        if True:# 按键Q回车提前退出
-            if system == 1 and msvcrt.kbhit():  # 检查是否有键盘输入
+        if True:
+            if system == 1 and msvcrt.kbhit():
                 user_input = msvcrt.getch().decode('utf-8').strip()
                 if user_input == 'q':
                     print("Stopping training after this epoch.")
                     break
-            elif system == 0 and sys.stdin in select.select([sys.stdin], [], [], 0)[0]:  # Check if 'q' was pressed
+            elif system == 0 and sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
                 user_input = sys.stdin.readline().strip()
                 if user_input == 'q':
                     print("Stopping training after this epoch.")
@@ -255,23 +215,15 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     model.eval()
     
     all_outputs = []
-    all_outputs_res = []  # NEW: 收集logits_res
-    all_outputs_sp = []   # NEW: 收集logits_sp
+    all_outputs_res = []
+    all_outputs_sp = []
     all_labels = []
     all_CKA = []
     
-    # NEW: 创建一个字典来按SNR存储预测和标签
-    # 结构: {'-20dB': {'preds': [...], 'labels': [...]}, '-15dB': ...}
     snr_results = defaultdict(lambda: {'preds': [], 'labels': []})
-    # NEW: 初始化分支正确性统计
     results = init_branch_results()
-    # NEW: 样本级马赛克统计容器：按(SNR, class)收集每个样本是否判对
-    # 结构: mosaic_store[(snr,label)] = {
-    #   'fcnn': [0/1,...], 'tatt':[...], 'fusion':[...]
-    # }
     mosaic_store = defaultdict(lambda: {'fcnn': [], 'tatt': [], 'fusion': []})
     
-    # 推理计时与显存统计准备
     total_infer_start = time.time()
     if torch.cuda.is_available() and (device.type == 'cuda' or 'cuda' in str(device)):
         torch.cuda.synchronize()
@@ -284,7 +236,7 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         test_bar = tqdm(test_loader, file=sys.stdout)
         for test_data in test_bar:
             iter_start = time.time()
-            freq_seq, test_labels, snr_batch = test_data  # 'snr' 重命名为 'snr_batch' 避免与列表混淆
+            freq_seq, test_labels, snr_batch = test_data
             freq_seq = freq_seq.to(device)
             test_labels = test_labels.to(device)
 
@@ -295,7 +247,6 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             preds_res = torch.argmax(logits_res, dim=1)
             preds_sp = torch.argmax(logits_sp, dim=1)
             
-            # NEW: 将CPU上的结果存入 snr_results 字典
             batch_preds = outputs_argmax.cpu().numpy()
             batch_labels = test_labels.cpu().numpy()
             
@@ -304,29 +255,23 @@ def test(args, folder_path, model, device, test_loader, target_classes):
                 snr_results[current_snr]['preds'].append(batch_preds[i])
                 snr_results[current_snr]['labels'].append(batch_labels[i])
 
-            # (这部分保持不变，用于计算总体混淆矩阵和总准确率)
             confusion.update(batch_preds, batch_labels)
             all_outputs.append(main.cpu())
             all_labels.append(test_labels.cpu())
             all_CKA.append(CKA)
-            # NEW: 记录res与sp的logits以计算它们的准确率
             all_outputs_res.append(logits_res.cpu())
             all_outputs_sp.append(logits_sp.cpu())
 
-            # NEW: 使用独立模块更新分支统计
             results = update_branch_results(results, preds_res, preds_sp, outputs_argmax, test_labels)
 
-            # NEW: 记录样本级正确性到马赛克存储（保持静态顺序：DataLoader迭代顺序）
             for i in range(test_labels.size(0)):
                 key = (snr_batch[i], int(test_labels[i].item()))
                 mosaic_store[key]['fcnn'].append(int(preds_res[i].item() == test_labels[i].item()))
                 mosaic_store[key]['tatt'].append(int(preds_sp[i].item() == test_labels[i].item()))
                 mosaic_store[key]['fusion'].append(int(outputs_argmax[i].item() == test_labels[i].item()))
 
-            # 可选：记录每 batch 用时（不做逐条打印，避免刷屏）
             _ = time.time() - iter_start
 
-    # --- 循环后，统计推理时间与显存 ---
     if torch.cuda.is_available() and (device.type == 'cuda' or 'cuda' in str(device)):
         torch.cuda.synchronize()
         peak_mem = torch.cuda.max_memory_allocated(device)
@@ -336,7 +281,6 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         cur_mem = 0
     total_infer_sec = time.time() - total_infer_start
     
-    # (这部分保持不变，用于计算总体混淆矩阵和总准确率)
     all_outputs = torch.cat(all_outputs, dim=0)
     all_labels = torch.cat(all_labels, dim=0)
     CKA = sum(all_CKA) / len(all_CKA)
@@ -344,14 +288,12 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     correct = (predicted == all_labels).float()
     batch_acc = correct.sum().item()
 
-    # NEW: 计算logits_res与logits_sp的整体准确率
     all_outputs_res = torch.cat(all_outputs_res, dim=0)
     all_outputs_sp = torch.cat(all_outputs_sp, dim=0)
     _, predicted_res = torch.max(all_outputs_res, dim=1)
     _, predicted_sp = torch.max(all_outputs_sp, dim=1)
     acc_res = (predicted_res == all_labels).float().sum().item() / len(all_labels)
     acc_sp = (predicted_sp == all_labels).float().sum().item() / len(all_labels)
-    # Overall precision/recall/F1 (macro average)
     overall_precision, overall_recall, overall_f1, _ = precision_recall_fscore_support(
         all_labels.cpu().numpy(),
         predicted.cpu().numpy(),
@@ -365,12 +307,10 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     test_acc = batch_acc
     test_accurate = test_acc / len(test_loader.dataset)
     print('[Test] Overall Accuracy: %.3f' % test_accurate)
-    # 统计吞吐与GPU小时（按单 GPU 计）
     total_samples = len(test_loader.dataset)
     samples_per_sec = (total_samples / total_infer_sec) if total_infer_sec > 0 else 0.0
     gpu_hours = total_infer_sec / 3600.0
     samples_per_gpu_hour = total_samples / gpu_hours if gpu_hours > 0 else 0.0
-    # 显存 MB
     mem_mb = cur_mem / (1024**2)
     peak_mb = peak_mem / (1024**2)
     avg_ms_per_sample = (total_infer_sec / total_samples * 1000.0) if total_samples > 0 else 0.0
@@ -379,7 +319,6 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     print(f"[Test] Average CKA between features: {CKA:.4f}")
     print(f"[Test] Accuracy (logits_res): {acc_res:.4f} | Accuracy (logits_sp): {acc_sp:.4f}")
 
-    # NEW: 打印分支组合统计
     print("\n--- Branch Correctness (Detailed) ---")
     print(f"only_fcnn: {results.get('only_fcnn', 0)}")
     print(f"only_tatt: {results.get('only_tatt', 0)}")
@@ -388,7 +327,6 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     print(f"fusion_with_branch_correct: {results.get('fusion_with_branch_correct', 0)}")
     print(f"fusion_only: {results.get('fusion_only', 0)}")
     print(f"branch_correct_but_fusion_wrong: {results.get('branch_correct_but_fusion_wrong', 0)}")
-    # 保留原摘要（向后兼容）
     print("--- Legacy Mix ---")
     print(f"both_correct: {results.get('both_correct', 0)}")
     print(f"fcnn_only  : {results.get('fcnn_only', 0)}")
@@ -396,18 +334,16 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     print(f"both_wrong : {results.get('both_wrong', 0)}")
     print(f"fusion_rescued: {results.get('fusion_rescued', 0)}")
 
-    # --- NEW: 按SNR计算详细指标 (替换您原有的 snr_datas 循环) ---
     
     print("\n--- Per-SNR Metrics Summary ---")
     print(f"{'SNR':<8} | {'Accuracy':<10} | {'Precision':<10} | {'Recall':<10} | {'F1-Score':<10}")
     print("-" * 54)
 
-    # 显示标签：将 'pure' 显示为 '10dB'，读取数据时仍用 'pure' 键
     snr_levels_display = ['-20dB', '-15dB', '-10dB', '-5dB', '0dB', '5dB', '10dB']
-    snr_accuracy_data = {}   # 每个 SNR 的准确率
-    snr_precision_data = {}  # 每个 SNR 的宏平均精确率
-    snr_recall_data = {}     # 每个 SNR 的宏平均召回率
-    snr_f1_data = {}         # 每个 SNR 的宏平均 F1
+    snr_accuracy_data = {}   
+    snr_precision_data = {}  
+    snr_recall_data = {}     
+    snr_f1_data = {}         
 
     for snr_val in snr_levels_display:
         data_key = 'pure' if snr_val == '10dB' else snr_val
@@ -430,9 +366,6 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             snr_f1_data[snr_val] = 0
             continue
 
-        # 使用 sklearn.metrics.precision_recall_fscore_support
-        # average='macro': 计算每个类的指标，然后取平均值，不考虑类别不平衡
-        # zero_division=0: 避免在分母为0时（例如某个类从未被预测）打印警告
         precision, recall, f1, _ = precision_recall_fscore_support(
             snr_labels, 
             snr_preds, 
@@ -440,25 +373,20 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             zero_division=0
         )
         
-        # 单独计算准确率
         correct_predictions = sum(p == l for p, l in zip(snr_preds, snr_labels))
         accuracy = correct_predictions / len(snr_labels)
 
-        # 存储各指标
         snr_accuracy_data[snr_val] = accuracy
         snr_precision_data[snr_val] = precision
         snr_recall_data[snr_val] = recall
         snr_f1_data[snr_val] = f1
 
-        # 打印新表格
         print(f"{snr_val:<8} | {accuracy:<10.4f} | {precision:<10.4f} | {recall:<10.4f} | {f1:<10.4f}")
 
     print("--- End of Summary ---")
 
-    # NEW: 调用封装的维恩图绘制
     plot_branch_venn(results, folder_path)
 
-    # NEW: 生成样本级性能马赛克图（类×SNR 的正方形格子；格子内用小正方形表示样本）
     try:
         import matplotlib.pyplot as plt
         import numpy as np
@@ -467,12 +395,9 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             plt.rcParams['font.family'] = 'Times New Roman'
         except Exception:
             pass
-        # 布局调整：横轴=Class，纵轴=SNR；每个格子为正方形，内部分布样本小方块
-        # 显示标签用 '10dB'，数据访问仍使用 'pure'
         snr_levels_display = ['-20dB', '-15dB', '-10dB', '-5dB', '0dB', '5dB', '10dB']
         num_snr = len(snr_levels_display)
         num_classes = args.class_num
-        # 统计每格样本数上限，确定格子边长（小方块网格尺寸）
         per_cell_counts = np.zeros((num_snr, num_classes), dtype=int)
         def _map_display_to_data(s):
             return 'pure' if s == '10dB' else s
@@ -484,18 +409,14 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         max_per_cell = int(per_cell_counts.max()) if per_cell_counts.size > 0 else 0
         if max_per_cell == 0:
             raise RuntimeError('No samples captured for mosaic plotting.')
-        # 每个格子的内部网格边长：尽量容纳所有样本
         cell_side = int(np.ceil(np.sqrt(max_per_cell)))  # cell_side x cell_side >= max_per_cell
-        mini_scale = 1  # 每个样本方块占用的像素边长
+        mini_scale = 1
         cell_pixels = cell_side * mini_scale
-        # 注意：横轴为类、纵轴为SNR，故总宽度按类别，总高度按SNR
         W_total = num_classes * cell_pixels
         H_total = num_snr * cell_pixels
 
         def build_block_image(branch_key):
-            # 初始化为白色背景；高度对应 SNR，宽度对应 Class
             img = np.ones((H_total, W_total, 3), dtype=np.float32)
-            # 遍历每个格子：si 对应 SNR（纵向），cj 对应 Class（横向）
             for si, snr in enumerate(snr_levels_display):
                 snr_data_key = _map_display_to_data(snr)
                 for cj in range(num_classes):
@@ -514,10 +435,8 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         img_fusion = build_block_image('fusion')
 
         def plot_block(img, title, out_name):
-            # 适配双栏单栏：较紧凑尺寸与字号
             fig, ax = plt.subplots(figsize=(3.4, 2.4))
-            ax.imshow(img, aspect='equal')
-            # 刻度：横轴类、纵轴 SNR
+            ax.imshow(img, aspect='equal', interpolation='nearest')
             xticks = [cj * cell_pixels + (cell_pixels - 1) / 2 for cj in range(num_classes)]
             yticks = [si * cell_pixels + (cell_pixels - 1) / 2 for si in range(num_snr)]
             ax.set_xticks(xticks)
@@ -543,7 +462,6 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         plot_block(img_fusion, 'Block Mosaic (Fusion: black=correct, white=wrong)', 'mosaic_fusion')
         print('Saved block mosaics: mosaic_fcnn/mosaic_tatt/mosaic_fusion (png & pdf)')
 
-        # 差异马赛克：Fusion - Branch（格子内小方块按颜色规则着色）
         def build_diff_block(fusion_key, other_key):
             img = np.ones((H_total, W_total, 3), dtype=np.float32)
             counts = {"white": 0, "gray": 0, "green": 0, "red": 0}
@@ -582,7 +500,7 @@ def test(args, folder_path, model, device, test_loader, target_classes):
 
         def plot_diff_block(img, counts, title, out_name):
             fig, ax = plt.subplots(figsize=(3.4, 2.4))
-            ax.imshow(img, aspect='equal')
+            ax.imshow(img, aspect='equal', interpolation='nearest')
             xticks = [cj * cell_pixels + (cell_pixels - 1) / 2 for cj in range(num_classes)]
             yticks = [si * cell_pixels + (cell_pixels - 1) / 2 for si in range(num_snr)]
             ax.set_xticks(xticks)
@@ -600,8 +518,8 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             legend_patches = [
                 mpatches.Patch(color='white', label=f"both 0 (white): {counts.get('white', 0)}"),
                 mpatches.Patch(color='gray', label=f"both 1 (gray): {counts.get('gray', 0)}"),
-                mpatches.Patch(color='green', label=f"fusion=1, other=0 (green): {counts.get('green', 0)}"),
-                mpatches.Patch(color='red', label=f"fusion=0, other=1 (red): {counts.get('red', 0)}")
+                mpatches.Patch(color='green', label=f"fusion=1, single=0 (green): {counts.get('green', 0)}"),
+                mpatches.Patch(color='red', label=f"fusion=0, single=1 (red): {counts.get('red', 0)}")
             ]
             ax.legend(handles=legend_patches, loc='lower right', frameon=True, framealpha=0.5, fontsize=7, borderpad=0.3)
             # ax.legend(handles=legend_patches, loc='lower right', frameon=True, framealpha=0.3, fontsize=8)
@@ -611,11 +529,9 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             fig.savefig(out_pdf, bbox_inches='tight')
             plt.close(fig)
 
-        # 上下排列的合并图：上(Fusion-HARNet)，下(Fusion-SSTA)
         try:
             fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(3.4, 4.8), sharex=True, sharey=True)
-            # 顶部
-            ax_top.imshow(img_diff_fcnn, aspect='equal')
+            ax_top.imshow(img_diff_fcnn, aspect='equal', interpolation='nearest')
             xticks = [cj * cell_pixels + (cell_pixels - 1) / 2 for cj in range(num_classes)]
             yticks = [si * cell_pixels + (cell_pixels - 1) / 2 for si in range(num_snr)]
             ax_top.set_xticks(xticks)
@@ -631,7 +547,7 @@ def test(args, folder_path, model, device, test_loader, target_classes):
             # ax_top.set_title('Diff Block (H-starNet vs HARNet)', fontsize=10)
 
             # 底部
-            ax_bottom.imshow(img_diff_tatt, aspect='equal')
+            ax_bottom.imshow(img_diff_tatt, aspect='equal', interpolation='nearest')
             ax_bottom.set_xticks(xticks)
             ax_bottom.set_xticklabels([str(i) for i in range(num_classes)], fontsize=8)
             ax_bottom.set_yticks(yticks)
@@ -653,7 +569,6 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         except Exception:
             pass
 
-        # 同时单独保存上下两张图以备选择
         plot_diff_block(img_diff_fcnn, counts_fcnn, 'Diff Block Mosaic (H-starNet vs HARNet)', 'mosaic_diff_fusion_minus_HARNet')
         plot_diff_block(img_diff_tatt, counts_tatt, 'Diff Block Mosaic (H-starNet vs SSTA)', 'mosaic_diff_fusion_minus_SSTA')
         print('Saved diff block mosaics (vertical combined + individual).')
@@ -666,26 +581,18 @@ def test(args, folder_path, model, device, test_loader, target_classes):
     values_rec = ', '.join(f"{snr_recall_data[k]:.4f}" for k in snr_levels_display)
     values_f1 = ', '.join(f"{snr_f1_data[k]:.4f}" for k in snr_levels_display)
 
-    # --- 计算 FLOPs 和 Params ---
-    # 注意：这里假设输入尺寸为 (1, 1, 512, 512)，如果您的模型输入是 (1, 2, 1024) 等其他形状，请修改此处
     try:
-        # 尝试获取一个真实的 batch 来确定输入维度，更稳健
         dummy_input = next(iter(test_loader))[0][0:1].to(device)
     except:
-        # 如果失败则使用默认形状
         dummy_input = torch.randn(1, 1, 512, 512).to(device)
 
     flops, params = profile(model, (dummy_input,), verbose=False)
     flops_int = int(flops)
     params_int = int(params)
 
-    # --- 计算平均单样本显存占用 ---
-    # 显存占用是按 Batch 分配的，所以单样本显存 = 峰值显存 / Batch Size
     current_batch_size = test_loader.batch_size
     mem_per_sample_MB = peak_mb / current_batch_size if current_batch_size > 0 else 0.0
 
-    # --- 构造最终输出字典字符串 ---
-    # 完全匹配您要求的格式
     metrics_struct = (
         f"'{args.model}_metrics': {{"
         f"'avg_acc': {test_accurate:.4f}, 'avg_acc_res': {acc_res:.4f}, 'avg_acc_sp': {acc_sp:.4f}, 'avg_precision': {overall_precision:.4f}, "
@@ -695,7 +602,7 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         f"'recall': [{values_rec}], "
         f"'f1': [{values_f1}], "
         f"'flops': {flops_int}, 'params': {params_int}, "
-        f"'gpu_infer_sec': {total_infer_sec:.6f}, "  # 将之前的 infer_sec 改名为 gpu_infer_sec
+        f"'gpu_infer_sec': {total_infer_sec:.6f}, "
         f"'mem_per_sample_MB': {mem_per_sample_MB:.4f}, "
         f"'samples_per_sec': {samples_per_sec:.4f}, "
         f"'cka_avg': {CKA:.4f}, "
@@ -705,11 +612,8 @@ def test(args, folder_path, model, device, test_loader, target_classes):
         f"}},"
     )
 
-
     print("\n" + "="*20 + " Final Metrics for Copying " + "="*20)
     print(metrics_struct)
     print("="*65)
-
-    # model_name_metrics = {'acc': [...], ...} 这一行可以直接复制到 Python 或 MATLAB 中使用
 
     return test_accurate
