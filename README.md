@@ -1,14 +1,16 @@
-<h1 align="center">
+<!-- <h1 align="center">
   <img src="graph/title.png">
-</h1>
+</h1> -->
+
+# RF-STARNet: A Multi-modal Lightweight Fusion Framework of UAV RF Fingerprinting Identification for Public Low-Altitude Safety
 
 <div align="center">
 
-[Zhenkun Liu](https://github.com/lzk2211),
+<!-- [Zhenkun Liu](https://github.com/lzk2211),
 [Yunling Liao](https://github.com/FishSkin2002),
 [Zhiyv Dai](https://github.com/krismiledy) and 
 [JunSheng Mu](https://scholar.google.com/citations?hl=zh-CN&user=ikS5u98AAAAJ)
-(Provisional)
+(Provisional) -->
 
 Beijing University of Posts & Telecommunications.
 
@@ -33,6 +35,7 @@ Beijing University of Posts & Telecommunications.
 - [06/Nov/2025] Initial public release of RF-STARNet repository.
 - [20/Nov/2025] Complete the experiments for the proposed innovations, design rigorous comparative experiments, and begin preparing figures for this paper.
 - [04/Dec/2025] The main body of the paper is essentially complete. Detailed updates have been made to the GitHub repository.
+- [22/Jan/2026] Finish the paper writing, and update Github repository.
 <!-- - [xx/xxx/2025] Paper preprint and model weights to be released soon.
 - [xx/xxx/2025] Benchmark scripts and dataset preparation utilities added. -->
 
@@ -43,6 +46,7 @@ However, existing methods fall short of the efficiency required for agile deploy
 To address these, we propose a lightweight **R**adio-**F**requency **S**pectro-**T**emporal **A**ttention **R**esidual **Net**work (**RF-STARNet**), which leverages dual-stream spectro-temporal learning to extract structured features for efficient detection. Specifically, we design a Spectral-Aware Residual Network (**SARNet**) to extract sparse, stationary spectral patterns. Simultaneously, a Sparse Sub-band Temporal Attention (**SSTA**) mechanism is used to capture global temporal autocorrelations and cyclostationary features.
 To deeply integrate these heterogeneous features, we propose an Adaptive Gating Mechanism to dynamically calibrate branch contributions, augmented by a novel deep supervision strategy that enforces feature diversity to ensure the learning of complementary discriminative knowledge.
 Experimental results demonstrate that RF-STARNet achieves a superior accuracy of 81.44\% with an ultra-low computational cost of 3.8 MFLOPs, exhibiting remarkable robustness even in low Signal-to-Noise Ratio (SNR) environments.
+
 ## 🏗️ Framework
 
 The overall architecture of RF-STARNet consists of three main stages:
@@ -84,7 +88,7 @@ data_set_5e6/
 
 1. Clone the repository:
 ```bash
-git clone [https://github.com/lzk2211/RF-STARNet.git](https://github.com/lzk2211/RF-STARNet.git)
+git clone https://github.com/lzk2211/RF-STARNet.git
 cd RF-STARNet
 ```
 2. Install dependencies:
@@ -104,8 +108,8 @@ To train the **RF-STARNet (Small version)** with Multi-Loss Deep Supervision:
 ```bash
 python main.py \
   --mode Train \
-  --model F_T_small_mulitloss_1122 \
-  --exp_name F_T_small_mulitloss_1122 \
+  --model F_T_small_mulitloss\
+  --exp_name F_T_small_mulitloss \
   --root_path /path/to/your/data_set_5e6 \
   --batch_size 64 \
   --epochs 250 \
@@ -115,9 +119,21 @@ python main.py \
 
 Key Arguments:
 
-- `--model`: The model factory function name (e.g., F_T for fusion model).
-- `--exp_name`: The runing results save in this project.
-- `--root_path`: Path to the preprocessed spectrogram dataset.
+- `--epochs`:         Number of training epochs
+- `--lr`:             Learning rate
+- `--weight_decay`:   Weight decay for optimizer
+- `--batch_size`:     Batch size
+- `--resume`:         train from checkpoint
+- `--ratio`:          ratio
+- `--mode`:           switch mode
+- `--exp_name`:       the name of the experiment
+- `--class_num`:      class number
+- `--model`:          switch model
+- `--root_path`:      dataset path
+- `--seed`:           Random seed for reproducibility
+- `--device`:         Device to use for training/testing
+
+
 
 ## 📊 Results
 
@@ -180,32 +196,34 @@ Inference Speed: The optimized architecture allows for rapid inference (**3.65s 
 
 ### 3. Comprehensive Analysis: Ablation Study & Performance Comparison (Small Scale Focus)
 
-**Table Caption:** Part I details the impact of specific modules on the Small architecture relative to the baseline. Part II compares our final models against state-of-the-art methods. MEI is calculated as $Acc / \log(Params \times MACs)$.
+### Ablation study and performance comparison
 
-| Model / Configuration | Avg Acc (%) | Params (M) | MACs (M) | MEI (Score) | GPU Infer (s) | CPU Infer (s) | Memory (MB) | Train Cost (h) |
+**Part I**: Impact of specific modules on the baseline architecture.  
+**Part II**: Benchmarking against comparison methods.
+
+| Model / Configuration | Avg Acc (%) | Params (M) | MACs (M) | MEI (Score) | GPU Infer. Time (ms) | CPU Infer. Time (ms) | Memory (MB) | Train Cost (GPU/h) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Part I: Module Ablation Study** | | | | | | | | |
-| *1. SARNet Architecture* | | | | | | | | |
-| Baseline | 69.43 | 0.019 | 0.59 | 6.90 | 4.68 | 6.49 | 1.21 | 0.62 |
-| w/ SE Block | 70.29 <span style="color:red">(+0.86%)</span> | 0.031 | 0.68 | 6.81 <span style="color:green">(-1.30%)</span> | 4.56 | 6.44 | 1.21 | 0.60 |
-| w/ MRFSM | 72.53 <span style="color:red">(+3.10%)</span> | 0.019 | 0.59 | **7.21** <span style="color:red">(+4.49%)</span> | 4.62 | 6.87 | 1.20 | 0.76 |
-| **SARNet (Ours)** | **77.81** <span style="color:red">(+8.38%)</span> | 0.111 | 2.01 | 6.86 <span style="color:green">(-0.58%)</span> | 4.54 | 7.13 | 1.29 | 0.60 |
-| *2. SSTA Architecture* | | | | | | | | |
-| Baseline | 74.18 | 0.550 | 273.7 | 5.23 | 3.66 | 19.63 | 7.44 | 0.95 |
-| Abs. Pos. Enc. | 30.81 <span style="color:green">(-43.37%)</span> | 0.042 | 1.75 | 2.83 <span style="color:green">(-45.89%)</span> | 4.76 | 21.74 | 1.78 | 0.45 |
-| w/ Stem | 74.33 <span style="color:red">(+0.15%)</span> | 0.550 | 34.26 | 5.60 <span style="color:red">(+7.07%)</span> | 4.55 | 7.69 | 1.93 | 0.78 |
-| w/ Grouped | 75.21 <span style="color:red">(+1.03%)</span> | 0.042 | 13.65 | 6.40 <span style="color:red">(+22.37%)</span> | 7.06 | 287.6 | 6.86 | 3.19 |
-| **SSTA (Ours)** | **75.79** <span style="color:red">(+1.61%)</span> | 0.042 | 1.75 | **6.97** <span style="color:red">(+33.27%)</span> | 4.52 | 14.91 | 1.79 | 0.37 |
-| *3. RF-STARNet Architecture* | | | | | | | | |
-| Baseline | 78.89 | 0.144 | 3.75 | 6.72 | 4.81 | 19.02 | 1.80 | 0.73 |
-| w/ Gating | 80.41 <span style="color:red">(+1.52%)</span> | 0.177 | 3.79 | 6.80 <span style="color:red">(+1.19%)</span> | 4.71 | 27.16 | 1.80 | 0.72 |
-| w/ Multi-Loss | 79.32 <span style="color:red">(+0.43%)</span> | 0.154 | 3.76 | 6.74 <span style="color:red">(+0.30%)</span> | 4.72 | 17.18 | 1.93 | 1.38 |
-| **RF-STARNet (Ours)** | **81.44** <span style="color:red">(+2.55%)</span> | 0.188 | 3.80 | **6.87** <span style="color:red">(+2.23%)</span> | 3.65 | 19.12 | 1.80 | 1.07 |
+| *1. Frequency Domain Architecture: SARNet* | | | | | | | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;Baseline | 69.43 | 0.019 | 0.59 | 208.32 | 0.70 | 0.97 | 0.18 | 0.09 |
+| &nbsp;&nbsp;&nbsp;&nbsp;w/ SE block | 70.29 <span style="color:red">(+0.86%)</span> | 0.031 | 0.68 | 207.84 <span style="color:green">(-0.23%)</span> | 0.68 | 0.96 | 0.18 | 0.09 |
+| &nbsp;&nbsp;&nbsp;&nbsp;w/ MRFSM | 72.53 <span style="color:red">(+3.10%)</span> | 0.019 | 0.59 | 227.34 <span style="color:red">(+8.37%)</span> | 0.69 | 1.03 | 0.18 | 0.11 |
+| &nbsp;&nbsp;&nbsp;&nbsp;**SARNet (Proposed)** | **77.81** <span style="color:red">(+8.38%)</span> | 0.111 | 2.01 | **231.69** <span style="color:red">(+10.09%)</span> | 0.68 | 1.07 | 0.19 | 0.09 |
+| *2. Time Domain Architecture: SSTA* | | | | | | | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;Baseline (RPB) | 74.18 | 0.550 | 273.70 | 168.56 | 0.55 | 2.93 | 1.11 | 0.14 |
+| &nbsp;&nbsp;&nbsp;&nbsp;w/ Stem | 74.33 <span style="color:red">(+0.15%)</span> | 0.550 | 34.26 | 180.75 <span style="color:red">(+6.74%)</span> | 0.68 | 1.15 | 0.29 | 0.12 |
+| &nbsp;&nbsp;&nbsp;&nbsp;w/ GSA | 75.21 <span style="color:red">(+1.03%)</span> | 0.042 | 13.65 | 208.92 <span style="color:red">(+19.32%)</span> | 1.05 | 42.98 | 1.03 | 0.48 |
+| &nbsp;&nbsp;&nbsp;&nbsp;**SSTA (Proposed)** | **75.79** <span style="color:red">(+1.61%)</span> | 0.042 | 1.75 | **229.58** <span style="color:red">(+26.58%)</span> | 0.68 | 2.23 | 0.27 | 0.06 |
+| *3. Fusion Architecture: RF-STARNet* | | | | | | | | |
+| &nbsp;&nbsp;&nbsp;&nbsp;Baseline | 78.89 | 0.144 | 3.75 | 230.38 | 0.72 | 2.84 | 0.27 | 0.11 |
+| &nbsp;&nbsp;&nbsp;&nbsp;w/ AGM | 80.41 <span style="color:red">(+1.52%)</span> | 0.177 | 3.79 | 237.43 <span style="color:red">(+2.97%)</span> | 0.70 | 4.06 | 0.27 | 0.11 |
+| &nbsp;&nbsp;&nbsp;&nbsp;w/ Multi-Loss | 79.32 <span style="color:red">(+0.43%)</span> | 0.154 | 3.76 | 232.30 <span style="color:red">(+0.83%)</span> | 0.71 | 2.57 | 0.29 | 0.21 |
+| &nbsp;&nbsp;&nbsp;&nbsp;**RF-STARNet (Proposed)** | **81.44** <span style="color:red">(+2.55%)</span> | 0.188 | 3.80 | **242.99** <span style="color:red">(+5.19%)</span> | 0.55 | 2.86 | 0.27 | 0.16 |
 | **Part II: Benchmark Comparison** | | | | | | | | |
-| MobileNetV3-Small | 77.36 | 0.930 | 316.0 | 5.35 | 5.67 | - | 14.19 | - |
-| ResNet18 | 76.11 | 11.180 | 9115 | 4.48 | 15.21 | - | 34.59 | - |
-| 1D-LW-ResNet18 | 73.92 | 0.135 | 3.54 | 6.33 | 3.51 | 7.22 | 1.29 | - |
-| S3R | 72.04 | 34.530 | 547.8 | 4.43 | 10.93 | - | 11.26 | - |
+| &nbsp;&nbsp;&nbsp;&nbsp;MobileNetV3 [zhu2025] | 77.36 | 0.930 | 316.03 | 179.64 | 0.85 | 19.08 | 2.12 | 0.37 |
+| &nbsp;&nbsp;&nbsp;&nbsp;ResNet18 [he2016] | 76.11 | 11.180 | 9115.93 | 147.91 | 2.27 | - | 5.17 | 0.33 |
+| &nbsp;&nbsp;&nbsp;&nbsp;ResNet-1D [liu2024] | 73.92 | 0.135 | 3.54 | 203.18 | 0.52 | 1.08 | 0.19 | 0.10 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S3R [yu2024] | 72.04 | 34.530 | 547.85 | 138.47 | 1.63 | - | 1.68 | 0.60 |
 
 ## 🔬 Analysis & Visualization
 
@@ -254,7 +272,8 @@ To validate the synergistic effect of the dual-branch fusion, we conducted a det
 
 - **Fig (b)**: While SSTA may perform suboptimally at high SNRs, the fused model maintains high accuracy by leveraging SARNet. In **low-SNR conditions**, RF-STARNet effectively exploits SSTA's robust global correlation features to ensure stability.
 
-**Conclusion**: The fusion mechanism successfully synthesizes the distinct advantages of both architectures, achieving consistent and robust performance across the entire SNR spectrum.
+**Conclusion**: In this paper, we propose RF-STARNet, a multi-model lightweight architecture designed to address the trade-off between accuracy and computation overhead in UAV RF fingerprinting. By effectively decoupling the signal processing into stationary spectral and cyclostationary temporal domains, the proposed SARNet and SSTA modules extract sparse, complementary fingerprints with a lower overhead. Furthermore, the integration of an adaptive gating mechanism and a deep supervision strategy ensures robust feature fusion.
+Extensive experiments validate that SARNet, SSTA, and RF-STARNet achieve a superior balance between high recognition accuracy and low computational cost, exhibiting remarkable efficiency and robustness compared to comparison methods. These attributes make the proposed methods highly suitable for edge deployment. Future work will focus on the embedded implementation of this framework in complex, real-world electromagnetic environments.
 
 
 ## 🔗 Citation
