@@ -6,12 +6,6 @@
 
 <div align="center">
 
-<!-- [Zhenkun Liu](https://github.com/lzk2211),
-[Yunling Liao](https://github.com/FishSkin2002),
-[Zhiyv Dai](https://github.com/krismiledy) and 
-[JunSheng Mu](https://scholar.google.com/citations?hl=zh-CN&user=ikS5u98AAAAJ)
-(Provisional) -->
-
 Beijing University of Posts & Telecommunications.
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-929292)](./LICENSE)
@@ -288,6 +282,35 @@ If you find this work useful for your research, please consider citing:
   year={2025}
 }
 ```
+
+## 👑 Contributor
+
+<table>
+<tr>
+    <td align="center">
+        <a href="https://github.com/lzk2211">
+            <img src="https://github.com/lzk2211.png?size=100" width="100;" style="border-radius: 50%;" alt="lzk2211"/>
+            <br />
+            <sub><b>Zhenkun Liu</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/FishSkin2002">
+            <img src="https://github.com/FishSkin2002.png?size=100" width="100;" style="border-radius: 50%;" alt="Yunling Liao"/>
+            <br />
+            <sub><b>Yunling Liao</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/krismiledy">
+            <img src="https://github.com/krismiledy.png?size=100" width="100;" style="border-radius: 50%;" alt="Zhiyv Dai"/>
+            <br />
+            <sub><b>Zhiyv Dai</b></sub>
+        </a>
+    </td>
+</tr>
+</table>
+
 ## License
 
 This repository is under the [Apache-2.0 license](./LICENSE).
