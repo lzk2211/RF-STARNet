@@ -30,16 +30,16 @@ Beijing University of Posts & Telecommunications.
 - [20/Nov/2025] Complete the experiments for the proposed innovations, design rigorous comparative experiments, and begin preparing figures for this paper.
 - [04/Dec/2025] The main body of the paper is essentially complete. Detailed updates have been made to the GitHub repository.
 - [22/Jan/2026] Finish the paper writing, and update Github repository.
-<!-- - [xx/xxx/2025] Paper preprint and model weights to be released soon.
-- [xx/xxx/2025] Benchmark scripts and dataset preparation utilities added. -->
+- [31/Jan/2026] Submit paper, waiting for review.
+<!-- - [xx/xxx/2026] Paper preprint and model weights to be released soon.
+- [xx/xxx/2026] Benchmark scripts and dataset preparation utilities added. -->
 
-## 📝 Abstract(Updating)
+## 📝 Abstract
 
-With the rapid increase of Low-Altitude Wireless Networks (LAWN), the effective management and regulation of Unmanned Aerial Vehicles (UAVs) have become critically important. Radio Frequency (RF) fingerprinting has emerged as a key technology for UAV detection, witnessing a paradigm shift from traditional model-driven approaches to data-driven deep learning methods. 
-However, existing methods fall short of the efficiency required for agile deployment. They treat RF signal or spectrograms as generic sequences or images, thereby overlooking the unique stationary behaviors inherent in the signals. Instead, they tend to over-learn massive dynamic redundant features, which consequently limits identification performance and increase model complexity.
-To address these, we propose a lightweight **R**adio-**F**requency **S**pectro-**T**emporal **A**ttention **R**esidual **Net**work (**RF-STARNet**), which leverages dual-stream spectro-temporal learning to extract structured features for efficient detection. Specifically, we design a Spectral-Aware Residual Network (**SARNet**) to extract sparse, stationary spectral patterns. Simultaneously, a Sparse Sub-band Temporal Attention (**SSTA**) mechanism is used to capture global temporal autocorrelations and cyclostationary features.
-To deeply integrate these heterogeneous features, we propose an Adaptive Gating Mechanism to dynamically calibrate branch contributions, augmented by a novel deep supervision strategy that enforces feature diversity to ensure the learning of complementary discriminative knowledge.
-Experimental results demonstrate that RF-STARNet achieves a superior accuracy of 81.44\% with an ultra-low computational cost of 3.8 MFLOPs, exhibiting remarkable robustness even in low Signal-to-Noise Ratio (SNR) environments.
+With the rapid development of Low-Altitude Wireless Networks (LAWN), the effective management and regulation of Unmanned Aerial Vehicle (UAV) is critical for low-altitude safety. Radio Frequency (RF) fingerprinting is a key technology for UAV detection due to its low power consumption and broad coverage.
+However, the state-of-the-art UAV RF detection schemes have a lower efficiency because RF signals or spectrograms are generally treated as generic sequences or images, failing to capture inherent stationary features. Consequently, massive dynamic redundant features are over-learned, resulting in limited identification performance and increased model complexity.
+To address these, we propose a multi-modal lightweight **RF** **S**pectro-**T**emporal **A**ttention **R**esidual **Net**work (RF-STARNet), which treats the signal's frequency and time characteristics as distinct modalities. Specifically, the Spectrum-Aware Residual Network (**SARNet**) is designed to extract sparse and stationary spectral patterns, while the Sparse Sub-band Temporal Attention (**SSTA**) module captures global temporal autocorrelation and cyclostationary features. Furthermore, the Adaptive Gating Mechanism (**AGM**) dynamically calibrates the contributions of each modality branch, enforces feature diversity by a novel deep supervision strategy, and complementary discriminative knowledge is learned therein as a consequence.
+Experimental results demonstrate that RF-STARNet achieves a superior accuracy of 81.44\% with a low computational cost of 3.8M Floating Point Operations (FLOPs), exhibiting remarkable robustness even in low Signal-to-Noise Ratio (SNR) environments.
 
 ## 🏗️ Framework
 
@@ -275,12 +275,7 @@ Extensive experiments validate that SARNet, SSTA, and RF-STARNet achieve a super
 If you find this work useful for your research, please consider citing:
 
 ```bibtex
-@article{liu2025harmony,
-  title={RF-STARNet: A Dual-Stream Lightweight Framework for UAV RF Fingerprinting Identification},
-  author={Zhenkun Liu, Yunling Liao, Zhiyv Dai and JunSheng Mu},
-  journal={arXiv preprint},
-  year={2025}
-}
+    Stay tuned for updates.
 ```
 
 ## 👑 Contributor
