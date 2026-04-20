@@ -8,6 +8,8 @@ import os
 import sys
 import csv
 from pathlib import Path
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fun import folder_settings, switch_model
 
 
@@ -257,13 +259,13 @@ def run_cam_visualization(
         '''
         res_cam = prepare_cam(
             switch_model(SWITCH_MODEL_ARG, args.device, args.class_num),
-            H_STARNET_PATH, 
+            TARGET_NET_PATH, 
             "res",
             device
             )
         spectra_cam = prepare_cam(
             switch_model(SWITCH_MODEL_ARG, args.device, args.class_num),
-            H_STARNET_PATH, 
+            TARGET_NET_PATH, 
             "spectra",
             device
             )
@@ -436,7 +438,7 @@ TARGET_CLASS_NAME_LIST = [
         "T0100", "T0101", "T0110", "T0111", 
         "T1000", "T1001"
         ]   # 所有类别的列表
-H_STARNET_PATH = Path("./final_results/42/melting/F_T_small_mulitloss_1122/model.pth")  # H-STARNET的权重路径
+TARGET_NET_PATH = Path("/home/kk/lzk/RF-STARNet/final_results/125/F_T_small_mulitloss_1122/model.pth")  # 要查看的模型的权重路径
 RESNET18_PATH = Path("./final_results/42/compare/resnet18/model.pth")   # ResNet18的权重路径
 SWITCH_MODEL_ARG = "F_T_small_mulitloss_1122"   # switch_model函数的参数
 TARGET_KIND_LIST = ['res', 'spectra', 'resnet18']   # 需要生成热力图的层
