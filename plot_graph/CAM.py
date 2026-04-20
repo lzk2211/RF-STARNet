@@ -458,7 +458,7 @@ if __name__ == "__main__":
     parser.add_argument('--ratio', type=float, default=1.0)
     parser.add_argument('--device', type=str, default='cuda:0')
     parser.add_argument('--target_snr', type=str, default='pure')
-    parser.add_argument('--sample', nargs='*', type=str, required=True)
+    parser.add_argument('-s', '--sample', nargs='*', type=str, required=True)
     
     args = parser.parse_args()
 
